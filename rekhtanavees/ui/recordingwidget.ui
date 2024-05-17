@@ -156,7 +156,7 @@
              <string/>
             </property>
             <property name="icon">
-             <iconset resource="main.qrc">
+             <iconset resource="mainwindow.qrc">
               <normaloff>:/images/icons/media-record.png</normaloff>:/images/icons/media-record.png</iconset>
             </property>
            </widget>
@@ -176,7 +176,7 @@
              <string/>
             </property>
             <property name="icon">
-             <iconset resource="main.qrc">
+             <iconset resource="mainwindow.qrc">
               <normaloff>:/images/icons/media-playback-start.png</normaloff>:/images/icons/media-playback-start.png</iconset>
             </property>
            </widget>
@@ -196,7 +196,7 @@
              <string/>
             </property>
             <property name="icon">
-             <iconset resource="main.qrc">
+             <iconset resource="mainwindow.qrc">
               <normaloff>:/images/icons/document-save.png</normaloff>:/images/icons/document-save.png</iconset>
             </property>
            </widget>
@@ -256,7 +256,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="main.qrc"/>
+  <include location="mainwindow.qrc"/>
  </resources>
  <connections/>
 </ui>

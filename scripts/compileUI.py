@@ -39,8 +39,18 @@ def compileUI(filename: str) -> None:
         python file and adds a `_ui.py` suffix to the output file.
     """
     inFile, outFile = filename + '.ui', filename + '_ui.py'
-    subprocess.run([UIC, '-g', 'python', '--from-imports', '-o', outFile, inFile])
-    print('Compiled UI', inFile, '->', outFile)
+    try:
+        subprocess.run([UIC,
+                        '--generator', 'python',
+                        '--from-imports',
+                        '--output', outFile,
+                        inFile],
+                       capture_output=True, check=True)
+    except subprocess.CalledProcessError as e:
+        print('Unsuccessful compilation of UI', inFile, '->', outFile)
+        print(f'*** Err# {e.returncode}:{e.stderr.decode("utf-8")}\n')
+    else:
+        print('Compiled UI', inFile, '->', outFile)
 
 
 # ******************************************************************************
@@ -64,20 +74,28 @@ def compileRC(filename: str) -> None:
         python file and adds a `_ui.py` suffix to the output file.
     """
     inFile, outFile = filename + '.qrc', filename + '_rc.py'
-    subprocess.run([RCC, '-g', 'python', '-o', outFile, inFile])
+
     print('Compiled QRC', inFile, '->', outFile)
+    try:
+        subprocess.run([RCC, '-g', 'python', '-o', outFile, inFile],
+                       capture_output=True, check=True)
+    except subprocess.CalledProcessError as e:
+        print('Unsuccessful compilation of QRC', inFile, '->', outFile)
+        print(f'*** Err# {e.returncode}:{e.output.decode("utf-8")}\n')
+    else:
+        print('Compiled QRC', inFile, '->', outFile)
 
 
 # ******************************************************************************
 if __name__ == '__main__':
     commonFiles = [
-        'ui\\main',
+        'rekhtanavees\\ui\\mainwindow',
     ]
 
     # Compile User Interface files
     uiFiles = commonFiles[:]
     uiFiles.extend([
-        'ui\\recordingwidget',
+        'rekhtanavees\\ui\\recordingwidget',
     ])
     for filename in uiFiles:
         compileUI(filename)

@@ -17,7 +17,7 @@ import fitz
 
 from rekhtanavees.constants import Rx
 from rekhtanavees.settings import AppConfig
-from rekhtanavees.ui.main_ui import Ui_rekhtaNavees
+from rekhtanavees.ui.mainwindow_ui import Ui_rekhtaNavees
 from rekhtanavees.ui.imageviewer import ImageViewer
 from rekhtanavees.ui.projectwizard import RProjectWizard
 from rekhtanavees.ui.recordingwidget import RecordingItemWidget
