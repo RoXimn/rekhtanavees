@@ -192,7 +192,7 @@ class AppConfig(BaseConfig):
                 `denovo` is `False`.
         """
         log = logging.getLogger(Rx.ApplicationName)
-        filePath = Path(CONFIG_FILENAME)
+        filePath = Rx.ConfigPath / CONFIG_FILENAME
         try:
             tdoc: tomlkit.TOMLDocument = tomlkit.loads(filePath.read_text(encoding='utf-8'))
         except TOMLKitError as e:
