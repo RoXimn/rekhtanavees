@@ -9,13 +9,13 @@ Rekhta Navees is an effort to _kill two birds with one stone_,
 The application is geared to,
 1. record audio, followed by,
 2. user supervised audio segmentation,
-3. transcription with existing working solutions (currently using _Google Speech API_ or _OpenAI Whisper_) and,
+3. transcription with existing working solutions (currently using _OpenAI Whisper_ STT model) and,
 4. aggregation of individual transcriptions to usable text.
 
 Standing on the shoulders of,
 * [PySide6](https://pypi.org/project/PySide6/) (Qt6) based UI with Python,
 * [librosa](https://pypi.org/project/librosa/)/[Numpy](https://pypi.org/project/numpy/) for audio processing,
-* [SpeechRecognition](https://pypi.org/project/SpeechRecognition/) for audio transcription,
+* [faster-whisper](https://github.com/SYSTRAN/faster-whisper) for audio transcription,
 * [PyMuPDF](https://pypi.org/project/PyMuPDF/) for pdf rendering,
 * [PyInstaller](https://pypi.org/project/pyinstaller/) for MS Windows standalone executable creation.
 
@@ -50,14 +50,13 @@ poetry install
 #### Compiling UI components
 The QT user interface and resource files need to be compiled before they can be used by the application,
 ```commandline
-cd rekhtanavees
-python compileUI.py
+python scripts\compileUI.py
 ```
 
 #### Running the application
 Run the application
 ```commandline
-python main.py
+python rekhtanavees\main.py
 ```
 
 #### Creating MS Windows standalone executable (optional)
@@ -65,4 +64,4 @@ The PyInstaller is run from the root directory of the project, where the specifi
 ```commandline
 pyinstaller rekthanavees.app.spec 
 ```
-producing the executable in the `build/rektanvees` folder.
+producing the executable in the `dist/rektanvees` folder.

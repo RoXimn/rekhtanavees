@@ -26,8 +26,6 @@ Updated         16 May 2024
 
 .. todo :: Revise **Development Setup** guide
 
-Development Environment Setup
-================================================================================
 This tutorial guides through the steps required to setup the development
 environment on various platforms.
 
@@ -37,7 +35,7 @@ The following software packages are required to be installed on your system:
 
 *   `Python 3.11 <https://www.python.org>`_
 *   `poetry <https://python-poetry.org/>`_
-*   `Install Forge <https://installforge.net/>`_ *for MS Windows*
+*   `Inno Setup <https://jrsoftware.org/isinfo.php>`_ *for MS Windows*
 
 See the specific instructions for your platform below.
 
@@ -80,7 +78,7 @@ Windows
 *   Download and install the `Windows MSI Installer <https://www.python.org/downloads/windows/>`_
     for the Python 3.11 release (at lest) from the Python website.
 
-*   Install `poetry` package manager
+*   Install `poetry`_ package manager
 
 Installation
 ================================================================================
@@ -89,16 +87,56 @@ Editor / IDE
 --------------------------------------------------------------------------------
 
 Python virtualenv
-^^^^^^^^^^^^^^^^^
+--------------------------------------------------------------------------------
 
 Install with pip
-^^^^^^^^^^^^^^^^
+--------------------------------------------------------------------------------
 
 Install from Git Checkout
-^^^^^^^^^^^^^^^^^^^^^^^^^
+--------------------------------------------------------------------------------
 
-Run
-^^^
+Running
+================================================================================
+
+Distribution
+================================================================================
+
+Windows
+--------------------------------------------------------------------------------
+Creating the distribution package consists of two steps,
+
+* generating the executable of the python code, and
+* packaging everything together as a nice single setup file for the end user.
+
+This can be done by running the convenience batch file within the python
+environment, with prerequisites installed, ::
+
+    scripts\generate-win-setup.bat
+
+or performing these steps separately, as per the requirement.
+
+1. Compiling
+^^^^^^^^^^^^
+The MS Windows executable is created using PyInstaller. From project *root*
+directory with python environment active, run::
+
+    pyinstaller rekhtanavees.app.spec
+
+This will create two folders ``build`` and ``dist`` in the *root* directory.
+The ``dist/rekhtanavees`` folder will contain the final executable.
+
+2. Packaging
+^^^^^^^^^^^^
+`Inno Setup`_ is used to create the installer for distribution to the end user.
+
+#. Download and install the `Inno Setup program <https://jrsoftware.org/isdl.php#stable>`_,
+   if not already done.
+#. Assuming the **Inno Setup** is installed to ``C:\Program Files (x86)\Inno Setup 6``, run::
+
+    "C:\Program Files (x86)\Inno Setup 6"\ISCC.exe installer\rekhtanavees-installer.iss
+
+   The generated output setup file should be in the same folder as the installer script.
+
 
 ..  seealso::
     ..
@@ -106,4 +144,3 @@ Run
 .. raw:: latex
 
    \pagebreak
-
