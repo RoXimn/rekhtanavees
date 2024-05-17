@@ -1,0 +1,17 @@
+@font-face {
+  font-family: "Noto Nastaliq Urdu";
+  src: url("NotoNastaliqUrdu-Regular.ttf") format('truetype');
+}
+@font-face {
+  font-family: "Noto Naskh Arabic";
+  src: url("NotoNaskhArabic-Regular.ttf") format('truetype');
+}
+
+a, nav.bd-links li>a:hover {
+    text-decoration: none;
+}
+
+@media print {
+  /* All your print styles go here */
+  #pst-skip-link {display:none !important;},
+}

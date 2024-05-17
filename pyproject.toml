@@ -1,0 +1,31 @@
+[tool.poetry]
+name = "RekhtaNavees"
+version = "0.1.0"
+description = "An urdu language audio transcriber."
+authors = ["roximn <roximn@rixir.org>"]
+readme = "README.md"
+license = "CC-BY-4.0"
+
+[tool.poetry.dependencies]
+python = "~3.12"
+pyside6 = "^6.7.0"
+mypy = "^1.10.0"
+sphinx = "^7.3.7"
+pytest = "^8.2.0"
+pyinstaller = {extras = ["encryption"], version = "^6.6.0"}
+librosa = "^0.10.2"
+pymupdf = "^1.24.2"
+tomlkit = "^0.12.5"
+humanize = "^4.9.0"
+pydantic = {extras = ["email"], version = "^2.7.1"}
+confz = "^2.0.1"
+strenum = "^0.4.15"
+pydantic-settings = "^2.2.1"
+tzdata = "^2024.1"
+sphinx-book-theme = "^1.1.2"
+autodoc-pydantic = "^2.2.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

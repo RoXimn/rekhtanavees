@@ -1,0 +1,15 @@
+/.mypy_cache
+/.idea
+/.venv
+
+/dist
+/build
+
+*_ui.py
+*_rc.py
+
+*.log
+*.db
+
+/installer/*.exe
+!/docs/build/

@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <author>RoXimn &lt;roximn@rixir.org</author>
+ <class>rekhtaNavees</class>
+ <widget class="QMainWindow" name="rekhtaNavees">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>800</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Rekhta Navees</string>
+  </property>
+  <property name="windowIcon">
+   <iconset resource="main.qrc">
+    <normaloff>:/images/icons/feather.png</normaloff>:/images/icons/feather.png</iconset>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout_2">
+    <property name="spacing">
+     <number>2</number>
+    </property>
+    <property name="leftMargin">
+     <number>0</number>
+    </property>
+    <property name="topMargin">
+     <number>0</number>
+    </property>
+    <property name="rightMargin">
+     <number>0</number>
+    </property>
+    <property name="bottomMargin">
+     <number>0</number>
+    </property>
+    <item>
+     <widget class="QSplitter" name="splitter">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+      <widget class="QWidget" name="layoutWidget">
+       <layout class="QVBoxLayout" name="verticalLayout">
+        <property name="spacing">
+         <number>2</number>
+        </property>
+        <item>
+         <widget class="QLabel" name="lblRecordings">
+          <property name="text">
+           <string>Audio Recordings</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QScrollArea" name="scrollArea">
+          <property name="frameShape">
+           <enum>QFrame::NoFrame</enum>
+          </property>
+          <property name="frameShadow">
+           <enum>QFrame::Plain</enum>
+          </property>
+          <property name="lineWidth">
+           <number>1</number>
+          </property>
+          <property name="midLineWidth">
+           <number>0</number>
+          </property>
+          <property name="verticalScrollBarPolicy">
+           <enum>Qt::ScrollBarAlwaysOn</enum>
+          </property>
+          <property name="horizontalScrollBarPolicy">
+           <enum>Qt::ScrollBarAsNeeded</enum>
+          </property>
+          <property name="widgetResizable">
+           <bool>true</bool>
+          </property>
+          <widget class="QWidget" name="scrollContents">
+           <property name="geometry">
+            <rect>
+             <x>0</x>
+             <y>0</y>
+             <width>781</width>
+             <height>503</height>
+            </rect>
+           </property>
+           <layout class="QVBoxLayout" name="recordingsLayout">
+            <property name="spacing">
+             <number>0</number>
+            </property>
+            <property name="sizeConstraint">
+             <enum>QLayout::SetMinimumSize</enum>
+            </property>
+            <property name="leftMargin">
+             <number>2</number>
+            </property>
+            <property name="topMargin">
+             <number>2</number>
+            </property>
+            <property name="rightMargin">
+             <number>2</number>
+            </property>
+            <property name="bottomMargin">
+             <number>2</number>
+            </property>
+           </layout>
+          </widget>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>800</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>&amp;File</string>
+    </property>
+    <widget class="QMenu" name="menuRecent">
+     <property name="title">
+      <string>R&amp;ecent</string>
+     </property>
+     <property name="icon">
+      <iconset resource="main.qrc">
+       <normaloff>:/images/icons/bookmark-new-list.png</normaloff>:/images/icons/bookmark-new-list.png</iconset>
+     </property>
+     <property name="separatorsCollapsible">
+      <bool>false</bool>
+     </property>
+     <property name="toolTipsVisible">
+      <bool>true</bool>
+     </property>
+     <addaction name="actionClearRecent"/>
+    </widget>
+    <addaction name="actionNew"/>
+    <addaction name="actionOpen"/>
+    <addaction name="actionOpenSource"/>
+    <addaction name="menuRecent"/>
+    <addaction name="separator"/>
+    <addaction name="actionExit"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>&amp;Help</string>
+    </property>
+    <addaction name="actionAbout"/>
+    <addaction name="actionAboutQt"/>
+   </widget>
+   <widget class="QMenu" name="menuRecordings">
+    <property name="title">
+     <string>Recordings</string>
+    </property>
+    <addaction name="actionRecordingAddNew"/>
+    <addaction name="actionRecordingRemove"/>
+    <addaction name="separator"/>
+    <addaction name="actionRecordingClearAll"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuRecordings"/>
+   <addaction name="menuHelp"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QToolBar" name="recordingToolBar">
+   <property name="windowTitle">
+    <string>Recordings</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="actionRecordingAddNew"/>
+   <addaction name="actionRecordingRemove"/>
+   <addaction name="separator"/>
+   <addaction name="actionRecordingClearAll"/>
+  </widget>
+  <action name="actionOpen">
+   <property name="icon">
+    <iconset resource="main.qrc">
+     <normaloff>:/images/icons/folder-green.png</normaloff>:/images/icons/folder-green.png</iconset>
+   </property>
+   <property name="text">
+    <string>O&amp;pen</string>
+   </property>
+   <property name="toolTip">
+    <string>Open existing Project</string>
+   </property>
+   <property name="statusTip">
+    <string>Open a file</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+O</string>
+   </property>
+  </action>
+  <action name="actionExit">
+   <property name="icon">
+    <iconset resource="main.qrc">
+     <normaloff>:/images/icons/system-shutdown.png</normaloff>:/images/icons/system-shutdown.png</iconset>
+   </property>
+   <property name="text">
+    <string>E&amp;xit</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="icon">
+    <iconset resource="main.qrc">
+     <normaloff>:/images/icons/feather.png</normaloff>:/images/icons/feather.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;About</string>
+   </property>
+   <property name="toolTip">
+    <string>About Rekhta Navees application</string>
+   </property>
+   <property name="shortcut">
+    <string>F1</string>
+   </property>
+  </action>
+  <action name="actionNew">
+   <property name="icon">
+    <iconset resource="main.qrc">
+     <normaloff>:/images/icons/folder-new.png</normaloff>:/images/icons/folder-new.png</iconset>
+   </property>
+   <property name="text">
+    <string>N&amp;ew</string>
+   </property>
+   <property name="toolTip">
+    <string>Create a new Project</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+N</string>
+   </property>
+  </action>
+  <action name="actionAboutQt">
+   <property name="icon">
+    <iconset resource="main.qrc">
+     <normaloff>:/images/icons/about-qt.png</normaloff>:/images/icons/about-qt.png</iconset>
+   </property>
+   <property name="text">
+    <string>About &amp;Qt</string>
+   </property>
+  </action>
+  <action name="actionClearRecent">
+   <property name="icon">
+    <iconset resource="main.qrc">
+     <normaloff>:/images/icons/edit-delete-shred.png</normaloff>:/images/icons/edit-delete-shred.png</iconset>
+   </property>
+   <property name="text">
+    <string>Clear All</string>
+   </property>
+   <property name="toolTip">
+    <string>Clear Recent Files</string>
+   </property>
+  </action>
+  <action name="actionOpenSource">
+   <property name="icon">
+    <iconset resource="main.qrc">
+     <normaloff>:/images/icons/folder-activities.png</normaloff>:/images/icons/folder-activities.png</iconset>
+   </property>
+   <property name="text">
+    <string>Open Source</string>
+   </property>
+  </action>
+  <action name="actionRecordingAddNew">
+   <property name="icon">
+    <iconset resource="main.qrc">
+     <normaloff>:/images/icons/list-add.png</normaloff>:/images/icons/list-add.png</iconset>
+   </property>
+   <property name="text">
+    <string>Add...</string>
+   </property>
+   <property name="toolTip">
+    <string>Add a new recording.</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+A</string>
+   </property>
+  </action>
+  <action name="actionRecordingRemove">
+   <property name="icon">
+    <iconset resource="main.qrc">
+     <normaloff>:/images/icons/list-remove.png</normaloff>:/images/icons/list-remove.png</iconset>
+   </property>
+   <property name="text">
+    <string>Remove</string>
+   </property>
+   <property name="toolTip">
+    <string>Remove current recording.</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+X</string>
+   </property>
+  </action>
+  <action name="actionRecordingClearAll">
+   <property name="icon">
+    <iconset resource="main.qrc">
+     <normaloff>:/images/icons/edit-clear-list.png</normaloff>:/images/icons/edit-clear-list.png</iconset>
+   </property>
+   <property name="text">
+    <string>Clear All</string>
+   </property>
+   <property name="toolTip">
+    <string>Clear all recordings.</string>
+   </property>
+  </action>
+ </widget>
+ <layoutdefault spacing="2" margin="0"/>
+ <resources>
+  <include location="main.qrc"/>
+ </resources>
+ <connections/>
+ <designerdata>
+  <property name="gridDeltaX">
+   <number>10</number>
+  </property>
+  <property name="gridDeltaY">
+   <number>10</number>
+  </property>
+  <property name="gridSnapX">
+   <bool>true</bool>
+  </property>
+  <property name="gridSnapY">
+   <bool>true</bool>
+  </property>
+  <property name="gridVisible">
+   <bool>true</bool>
+  </property>
+ </designerdata>
+</ui>
