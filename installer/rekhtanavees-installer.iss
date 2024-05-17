@@ -44,7 +44,7 @@ Name: "{userdesktop}\{#AppDisplayName} v{#AppVer}"; Filename: "{app}\{#AppFilena
 
 [Run]
 Filename: "{app}\{#AppFilename}"; Description: "Launch {#AppDisplayName}  v{#AppVer} application"; Flags: nowait postinstall skipifsilent
-Filename: "{app}\README.md"; Description: "Show README file"; Flags: shellexec postinstall skipifsilent unchecked
+Filename: "{app}\docs\overview.html"; Description: "Show README file"; Flags: shellexec postinstall skipifsilent
 
 [CustomMessages]
 NameAndVersion={#AppDisplayName} v{#AppVer}
