@@ -17,7 +17,7 @@ a = Analysis(['rekhtanavees/main.py'],
              hooksconfig=None,
              runtime_hooks=None,
              cipher=block_cipher,
-             excludes=None)
+             excludes=['sphinx', 'autodoc-pydantic', 'sphinx-book-theme', 'pydata-sphinx-theme', 'sklearn', 'mypy'])
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
