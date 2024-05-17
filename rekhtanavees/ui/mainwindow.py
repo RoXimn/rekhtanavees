@@ -15,13 +15,13 @@ from PySide6.QtGui import QAction, QIcon, QImage
 from PySide6.QtWidgets import QMainWindow, QMessageBox, QSizePolicy, QSpacerItem
 import fitz
 
-from rekhtanavees.settings import AppConfig
-from ui.imageviewer import ImageViewer
-from audio.audioproject import AudioProject
 from rekhtanavees.constants import Rx
-from ui.projectwizard import RProjectWizard
-from ui.recordingwidget import RecordingItemWidget
+from rekhtanavees.settings import AppConfig
 from rekhtanavees.ui.main_ui import Ui_rekhtaNavees
+from rekhtanavees.ui.imageviewer import ImageViewer
+from rekhtanavees.ui.projectwizard import RProjectWizard
+from rekhtanavees.ui.recordingwidget import RecordingItemWidget
+from rekhtanavees.audio.audioproject import AudioProject
 
 
 # ******************************************************************************

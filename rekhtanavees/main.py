@@ -21,7 +21,7 @@ from PySide6.QtWidgets import QApplication, QStyleFactory
 from rekhtanavees.settings import AppConfig, Themes
 from rekhtanavees.constants import Rx
 from rekhtanavees.ui.mainwindow import MainWindow
-from misc.utils import slugify
+from rekhtanavees.misc.utils import slugify
 
 
 # ******************************************************************************

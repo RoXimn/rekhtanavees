@@ -22,7 +22,7 @@ from pydantic import (
 )
 
 from rekhtanavees.constants import Rx
-from misc.utils import isValidProjectName, slugify
+from rekhtanavees.misc.utils import isValidProjectName, slugify
 
 
 # ******************************************************************************

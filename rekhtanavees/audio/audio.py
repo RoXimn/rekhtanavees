@@ -14,7 +14,7 @@ import numpy as np
 import soundfile as sf
 from PySide6.QtGui import QImage
 
-from .spectra import COLOR_MAPS_8BIT
+from rekhtanavees.audio.spectra import COLOR_MAPS_8BIT
 
 
 # ******************************************************************************

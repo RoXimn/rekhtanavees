@@ -14,10 +14,10 @@ from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (QCheckBox, QFileDialog, QFormLayout, QFrame, QHBoxLayout, QLineEdit, QMessageBox, QPlainTextEdit, QPushButton,
                                QSizePolicy, QWizard, QWizardPage)
 
-from settings import AppConfig
-from audio.audioproject import AudioProject, AudioProjectException
+from rekhtanavees.settings import AppConfig
+from rekhtanavees.audio.audioproject import AudioProject, AudioProjectException
 from rekhtanavees.constants import Rx
-from misc.utils import isValidProjectName
+from rekhtanavees.misc.utils import isValidProjectName
 
 
 # ******************************************************************************

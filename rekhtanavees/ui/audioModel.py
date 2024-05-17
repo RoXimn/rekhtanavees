@@ -11,7 +11,7 @@ from typing import Any, List, Sequence, Union
 
 from PySide6.QtCore import QAbstractListModel, QMimeData, QModelIndex, QObject, QPersistentModelIndex, Qt
 
-from audio.audioproject import AudioProject
+from rekhtanavees.audio.audioproject import AudioProject
 
 
 # ******************************************************************************

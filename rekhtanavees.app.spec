@@ -1,29 +1,23 @@
-# -*- mode: python ; coding: utf-8 -*-
-
 # ******************************************************************************
-# Copyright (c) 2022. All rights reserved.
+# Copyright (c) 2024. All rights reserved.
 #
 # This work is licensed under the Creative Commons Attribution 4.0 International License.
 # To view a copy of this license, visit # http://creativecommons.org/licenses/by/4.0/.
 #
 # Author:      RoXimn <roximn@rixir.org>
 # ******************************************************************************
-block_cipher = pyi_crypto.PyiBlockCipher(key='NW58U0QMjsN6hsfz')
+block_cipher = None
 
-
-a = Analysis(['rekhtanavees\\main.py'],
+a = Analysis(['rekhtanavees/main.py'],
              pathex=[],
-             binaries=[],
+             binaries=None,
              datas=[],
              hiddenimports=[],
-             hookspath=[],
-             hooksconfig={},
-             runtime_hooks=[],
-             excludes=[],
-             win_no_prefer_redirects=False,
-             win_private_assemblies=False,
+             hookspath=None,
+             hooksconfig=None,
+             runtime_hooks=None,
              cipher=block_cipher,
-             noarchive=False)
+             excludes=None)
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
@@ -35,18 +29,18 @@ exe = EXE(pyz,
           debug=False,
           bootloader_ignore_signals=False,
           strip=True,
-          upx=True,
+          upx=False,
           console=False,
           disable_windowed_traceback=False,
           target_arch=None,
           codesign_identity=None,
-          entitlements_file=None, icon='rekhtanavees\\feather.ico')
+          entitlements_file=None, icon='rekhtanavees/ui/icons/feather.ico')
 
 coll = COLLECT(exe,
                a.binaries,
                a.zipfiles,
                a.datas, 
                strip=False,
-               upx=True,
+               upx=False,
                upx_exclude=[],
                name='rekhtanavees')
