@@ -11,6 +11,10 @@ a, nav.bd-links li>a:hover {
     text-decoration: none;
 }
 
+footer.prev-next-footer {
+    box-shadow: 1px -6px 6px -6px var(--pst-color-shadow);
+}
+
 @media print {
   /* All your print styles go here */
   #pst-skip-link {display:none !important;},

@@ -15,7 +15,7 @@ The :py:mod:`main <rekhtanavees.main>` contains the main application object
 instantiation and startup.
 
 
-``rekhtanavees.main``
+rekhtanavees.main
 ================================================================================
 
 .. automodule:: rekhtanavees.main
