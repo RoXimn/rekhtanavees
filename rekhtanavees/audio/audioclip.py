@@ -12,7 +12,6 @@ from typing import Any
 
 import librosa
 import numpy as np
-import soundfile as sf
 from PySide6.QtGui import QImage
 
 from rekhtanavees.audio.spectra import COLOR_MAPS_8BIT
@@ -31,45 +30,17 @@ class AudioClip(object):
     """
 
     # **************************************************************************
-    def __init__(self, dataType: str = 'float32', sampleRate: int = 44100):
-        self.audioSignal: np.ndarray = np.array([], dtype=dataType)
-        self.sampleRate: int = sampleRate
+    def __init__(self):
+        self.audioSignal: np.ndarray = np.array([], dtype='float32')
+        self.sampleRate: int = 48000
 
     # **************************************************************************
-    def appendAudio(self, audioBuffer: np.ndarray, sampleRate: int):
-        """Append given audio data to existing audio data
+    @staticmethod
+    def createAudioClip(filePath: Path) -> 'AudioClip':
+        """Create an audio clip object from the given audio file.
 
-        Args:
-            audioBuffer (numpy.ndarray): audio data to append, in any `numpy.dtype`,
-                this is converted to the required data type as needed.
-            sampleRate (int): `audioBuffer`'s audio signal sample rate. This HAS to be
-                the same as the `self.sampleRate`.
-        """
-        assert sampleRate == self.sampleRate
-        if audioBuffer.dtype != self.audioSignal.dtype:
-            audioBuffer = librosa.util.buf_to_float(audioBuffer, n_bytes=audioBuffer.dtype.itemsize,
-                                                    dtype=self.audioSignal.dtype)
-        self.audioSignal = np.append(self.audioSignal, audioBuffer, axis=0)
-
-    # **************************************************************************
-    def saveAudio(self, filePath: Path, audioFormat: str = 'flac'):
-        """Save audio data with provided filename with given format.
-
-        Args:
-            filePath (Path): The format is used as a suffix to the new file.
-            audioFormat (str): the SoundFile format identifier to use for saving.
-        """
-        assert filePath is not None and isinstance(filePath, Path)
-        # if file does not exist, at least the parent should be a directory
-        if not filePath.is_file():
-            assert filePath.parent.is_dir(), 'File path does not exist'
-
-        audioFilePath = filePath.with_suffix(f'.{audioFormat}')
-        sf.write(audioFilePath, self.audioSignal, self.sampleRate, format=audioFormat, subtype='PCM_24')
-
-    # **************************************************************************
-    def loadAudio(self, filePath: Path):
-        """Load audio data with provided filename.
+        Uses librosa to load audio files, hence all formats supported by lbrosa can
+        be used.
 
         Args:
             filePath (Path): filename of the audio file to load. Should be a valid and existing filepath.
@@ -77,14 +48,16 @@ class AudioClip(object):
         assert filePath is not None and isinstance(filePath, Path)
         assert filePath.is_file()
 
-        self.audioSignal, self.sampleRate = sf.read(filePath)
+        ac = AudioClip()
+        ac.audioSignal, ac.sampleRate = librosa.load(filePath, sr=None, mono=True)
+        return ac
 
     # **************************************************************************
-    def createSpectrogram(self,
+    def createSpectrogram(self, startTime: int = None, endTime: int = None,
                           melBins: int = 48, hopLength: int = 512,
                           nFFT: int = 2048,
                           vtickTime: int = 1, vtickValue: int = 192) -> np.ndarray[Any, np.dtype]:
-        """Create a Mel Spectrogram of the audio signal
+        """Create a Mel Spectrogram of the mono audio signal in the given time interval
 
         Note:
             The essential parameter to understanding the output dimensions of
@@ -110,6 +83,10 @@ class AudioClip(object):
             430 is the number of features (43 frame in one second x 10 seconds).
 
         Args:
+            startTime (Optional[int]): start time interval (ms). Defaults to ``None``,
+                indicating beginning of the clip.
+            endTime (Optional[int]): end time interval (ms). Defaults to ``None``,
+                indicating end of the clip.
             hopLength (int): Interval between windows of Short FFT sampling
             nFFT (int): The window length of the SFFT sampling
             melBins (int): Number of bins in Mel Spectrogram (height of the spectrogram image)
@@ -117,7 +94,20 @@ class AudioClip(object):
             vtickValue (int): Pixel value to use for seconds tick mark in spectrogram, from the colormap
             cmap (list[int]): 256 `AARRGGBB` pixel value colormap for the spectrogram
         """
-        melSpectrum = librosa.feature.melspectrogram(y=self.audioSignal,
+
+        assert self.audioSignal.ndim == 1
+        LAST = self.audioSignal.shape[0] - 1
+        if LAST < 0:
+            return np.array([])
+
+        startTime = 0 if startTime is None else startTime * self.sampleRate // 1000
+        endTime = LAST if endTime is None else endTime * self.sampleRate // 1000
+        startTime = np.clip(startTime, a_min=0, a_max=LAST)
+        endTime = np.clip(endTime, a_min=0, a_max=LAST)
+        if startTime > endTime:
+            startTime, endTime = endTime, startTime
+
+        melSpectrum = librosa.feature.melspectrogram(y=self.audioSignal[startTime:endTime],
                                                      sr=self.sampleRate,
                                                      n_mels=melBins,
                                                      n_fft=nFFT,
@@ -139,13 +129,18 @@ class AudioClip(object):
         return byteMap
 
     # **************************************************************************
-    def getSpectrumImage(self, widthPerSec: int = 24, height: int = 48,
+    def getSpectrumImage(self, startTime: int = None, endTime: int = None,
+                         widthPerSec: int = 24, height: int = 48,
                          nFFT: int = 2048,
                          timeMarker: int = 1, markerColor: int = 192,
                          cmap: str = 'magma') -> QImage:
         """Create Mel Spectrogram QImage of the recorded audio signal.
 
         Args:
+            startTime (Optional[int]): start time interval (ms). Defaults to ``None``,
+                indicating beginning of the clip.
+            endTime (Optional[int]): end time interval (ms). Defaults to ``None``,
+                indicating end of the clip.
             widthPerSec (int): Width of spectrogram image corresponding to one second
             height (int): Height of spectrogram image
             nFFT (int): Window length of Short FFT sampling of audio signal
@@ -155,7 +150,8 @@ class AudioClip(object):
                 and ``grayscale``. Add ``_r`` to name for reverse map.
         """
 
-        byteMap = self.createSpectrogram(melBins=height,
+        byteMap = self.createSpectrogram(startTime=startTime, endTime=endTime,
+                                         melBins=height,
                                          hopLength=self.sampleRate//widthPerSec,
                                          nFFT=nFFT,
                                          vtickTime=timeMarker,
