@@ -1,20 +1,24 @@
 ..  ****************************************************************************
-    * Copyright © 2014-2015, RiXiR (Pvt) Ltd. All rights reserved.
+    * Copyright © 2014-2021, RiXiR (Pvt) Ltd. All rights reserved.
     * Any unauthorised usage, copying, modification, and distribution of this
     * software and its documentation constitutes infringement of the copyright.
     ****************************************************************************
 
+:orphan:
+
 ********************************************************************************
-Modules
+``audioclip``
 ********************************************************************************
-..  toctree::
-    :maxdepth: 1
 
-    main
-    constants
-    settings
-    audio/index
+This module contains the audio clip processing related code.
 
-..  raw:: latex
+rekhtanavees.audio.audioclip
+================================================================================
 
-    \pagebreak
+.. automodule:: rekhtanavees.audio.audioclip
+    :members:
+    :undoc-members:
+
+.. raw:: latex
+
+   \pagebreak

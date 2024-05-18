@@ -13,7 +13,7 @@ from PySide6.QtCore import (QPoint, QRect, QSize, Qt)
 from PySide6.QtGui import (QBrush, QImage, QMouseEvent, QPaintEvent, QPainter, QPalette, QPixmap)
 from PySide6.QtWidgets import (QLabel, QToolTip, QWidget)
 
-from rekhtanavees.audio.audio import AudioClip
+from rekhtanavees.audio.audioclip import AudioClip
 
 
 # ******************************************************************************

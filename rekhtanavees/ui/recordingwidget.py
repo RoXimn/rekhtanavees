@@ -19,7 +19,7 @@ from PySide6.QtMultimedia import (QAudioDevice, QAudioFormat, QAudioOutput,
 from PySide6.QtWidgets import (QWidget)
 
 from rekhtanavees.ui.recordingwidget_ui import Ui_recordingWidget
-from rekhtanavees.audio.audio import AudioClip
+from rekhtanavees.audio.audioclip import AudioClip
 from rekhtanavees.audio.audioproject import Recording
 
 

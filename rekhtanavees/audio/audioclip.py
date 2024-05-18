@@ -8,6 +8,7 @@
 # Author:      RoXimn <roximn@rixir.org>
 # ******************************************************************************
 from pathlib import Path
+from typing import Any
 
 import librosa
 import numpy as np
@@ -51,40 +52,38 @@ class AudioClip(object):
         self.audioSignal = np.append(self.audioSignal, audioBuffer, axis=0)
 
     # **************************************************************************
-    def saveAudio(self, filename: str, audioFormat: str = 'flac'):
+    def saveAudio(self, filePath: Path, audioFormat: str = 'flac'):
         """Save audio data with provided filename with given format.
 
         Args:
-            filename (str): filename (with or without suffix). The format is used
-                as a suffix to the new file.
+            filePath (Path): The format is used as a suffix to the new file.
             audioFormat (str): the SoundFile format identifier to use for saving.
         """
-        assert len(filename) > 0
-        audioFilePath = Path(filename).with_suffix(f'.{audioFormat}')
-        sf.write(str(audioFilePath), self.audioSignal, self.sampleRate, format=audioFormat, subtype='PCM_24')
+        assert filePath is not None and isinstance(filePath, Path)
+        # if file does not exist, at least the parent should be a directory
+        if not filePath.is_file():
+            assert filePath.parent.is_dir(), 'File path does not exist'
+
+        audioFilePath = filePath.with_suffix(f'.{audioFormat}')
+        sf.write(audioFilePath, self.audioSignal, self.sampleRate, format=audioFormat, subtype='PCM_24')
 
     # **************************************************************************
-    def loadAudio(self, filename: str):
+    def loadAudio(self, filePath: Path):
         """Load audio data with provided filename.
 
         Args:
-            filename (str): filename of the audio file to load. Should be a valid
-            and existing filepath.
+            filePath (Path): filename of the audio file to load. Should be a valid and existing filepath.
         """
-        assert filename is not None
-        assert filename.strip() != ''
+        assert filePath is not None and isinstance(filePath, Path)
+        assert filePath.is_file()
 
-        audioFilePath = Path(filename)
-        assert audioFilePath.exists()
-        assert audioFilePath.is_file()
-
-        self.audioSignal, self.sampleRate = sf.read(audioFilePath)
+        self.audioSignal, self.sampleRate = sf.read(filePath)
 
     # **************************************************************************
     def createSpectrogram(self,
                           melBins: int = 48, hopLength: int = 512,
                           nFFT: int = 2048,
-                          vtickTime: int = 1, vtickValue: int = 192):
+                          vtickTime: int = 1, vtickValue: int = 192) -> np.ndarray[Any, np.dtype]:
         """Create a Mel Spectrogram of the audio signal
 
         Note:
@@ -116,7 +115,8 @@ class AudioClip(object):
             melBins (int): Number of bins in Mel Spectrogram (height of the spectrogram image)
             vtickTime (int): Time interval to mark on the spectrogram in seconds. Use 0 to turn off
             vtickValue (int): Pixel value to use for seconds tick mark in spectrogram, from the colormap
-            cmap (list[int]): 256 `AARRGGBB` pixel value colormap for the spectrogram"""
+            cmap (list[int]): 256 `AARRGGBB` pixel value colormap for the spectrogram
+        """
         melSpectrum = librosa.feature.melspectrogram(y=self.audioSignal,
                                                      sr=self.sampleRate,
                                                      n_mels=melBins,
@@ -143,15 +143,17 @@ class AudioClip(object):
                          nFFT: int = 2048,
                          timeMarker: int = 1, markerColor: int = 192,
                          cmap: str = 'magma') -> QImage:
-        """Create Mel Spectrogram of the recorded audio signal.
+        """Create Mel Spectrogram QImage of the recorded audio signal.
 
-        widthPerSec (int): Width of spectrogram image corresponding to one second
-        height (int): Height of spectrogram image
-        nFFT (int): Window length of Short FFT sampling of audio signal
-        timeMarker (int): Time marker placement interval, 0 to turn off.
-        markerColor (int): Pixel value to use for seconds tick mark in spectrogram, from the colormap
-        cmap (str): Colormap name to use for the spectrogram. Opt from `magma`
-            and `grayscale`. Add `_r` to name for reverse map"""
+        Args:
+            widthPerSec (int): Width of spectrogram image corresponding to one second
+            height (int): Height of spectrogram image
+            nFFT (int): Window length of Short FFT sampling of audio signal
+            timeMarker (int): Time marker placement interval, 0 to turn off.
+            markerColor (int): Pixel value to use for seconds tick mark in spectrogram, from the colormap
+            cmap (str): Colormap name to use for the spectrogram. Opt from ``magma``
+                and ``grayscale``. Add ``_r`` to name for reverse map.
+        """
 
         byteMap = self.createSpectrogram(melBins=height,
                                          hopLength=self.sampleRate//widthPerSec,
