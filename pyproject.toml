@@ -9,9 +9,6 @@ license = "CC-BY-4.0"
 [tool.poetry.dependencies]
 python = "~3.12"
 pyside6 = "^6.7.0"
-mypy = "^1.10.0"
-sphinx = "^7.3.7"
-pytest = "^8.2.0"
 librosa = "^0.10.2"
 pymupdf = "^1.24.2"
 tomlkit = "^0.12.5"
@@ -21,10 +18,14 @@ confz = "^2.0.1"
 strenum = "^0.4.15"
 pydantic-settings = "^2.2.1"
 tzdata = "^2024.1"
+
+[tool.poetry.group.dev.dependencies]
+mypy = "^1.10.0"
+sphinx = "^7.3.7"
+pytest = "^8.2.1"
+pyinstaller = "^6.6.0"
 sphinx-book-theme = "^1.1.2"
 autodoc-pydantic = "^2.2.0"
-pyinstaller = "^6.6.0"
-
 
 [build-system]
 requires = ["poetry-core"]
