@@ -18,6 +18,7 @@ confz = "^2.0.1"
 strenum = "^0.4.15"
 pydantic-settings = "^2.2.1"
 tzdata = "^2024.1"
+orjson = "^3.10.3"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.10.0"
