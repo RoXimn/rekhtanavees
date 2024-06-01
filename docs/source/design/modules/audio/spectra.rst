@@ -10,24 +10,18 @@
 :orphan:
 
 ********************************************************************************
-``main``
+``spectra``
 ********************************************************************************
 
-This folder is the home of all the source code of the `RAxis` core application.
-The :py:mod:`main <rekhtanavees.main>` contains the main application object
-instantiation and startup.
+This module contains the colormaps for rendering the spectrogram images.
 
-
-rekhtanavees.main
+rekhtanavees.audio.spectra
 ================================================================================
 
-.. automodule:: rekhtanavees.main
+.. automodule:: rekhtanavees.audio.spectra
     :members:
     :undoc-members:
-    :private-members:
-    :special-members:
 
 .. raw:: latex
 
    \pagebreak
-

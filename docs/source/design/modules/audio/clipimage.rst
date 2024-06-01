@@ -10,24 +10,18 @@
 :orphan:
 
 ********************************************************************************
-``main``
+``clipimage``
 ********************************************************************************
 
-This folder is the home of all the source code of the `RAxis` core application.
-The :py:mod:`main <rekhtanavees.main>` contains the main application object
-instantiation and startup.
+This module contains the handles spectrogram rendering of an audio clip.
 
-
-rekhtanavees.main
+rekhtanavees.audio.clipimage
 ================================================================================
 
-.. automodule:: rekhtanavees.main
+.. automodule:: rekhtanavees.audio.clipimage
     :members:
     :undoc-members:
-    :private-members:
-    :special-members:
 
 .. raw:: latex
 
    \pagebreak
-
