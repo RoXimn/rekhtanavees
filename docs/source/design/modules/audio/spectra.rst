@@ -12,12 +12,6 @@
 ********************************************************************************
 ``spectra``
 ********************************************************************************
-
-This module contains the colormaps for rendering the spectrogram images.
-
-rekhtanavees.audio.spectra
-================================================================================
-
 .. automodule:: rekhtanavees.audio.spectra
     :members:
     :undoc-members:

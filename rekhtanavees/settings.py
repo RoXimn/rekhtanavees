@@ -7,6 +7,14 @@
 #
 # Author:      RoXimn <roximn@rixir.org>
 # ******************************************************************************
+"""This module manages application wide settings with singleton object,
+persisted as a TOML file.
+
+It uses pydantic based confz library for the actual work.
+
+All settings have a default value, and are recreated if missing from the source.
+"""
+# ******************************************************************************
 import logging
 from dataclasses import dataclass
 from enum import auto
@@ -26,6 +34,7 @@ from rekhtanavees.constants import Rx
 
 # ******************************************************************************
 class LogLevels(StrEnum):
+    """Python log levels"""
     CRITICAL = auto()
     WARNING = auto()
     INFO = auto()
@@ -34,6 +43,7 @@ class LogLevels(StrEnum):
 
 # **************************************************************************
 class Themes(StrEnum):
+    """Application themes"""
     Light = auto()
     Dark = auto()
     HighContrast = auto()
@@ -41,6 +51,7 @@ class Themes(StrEnum):
 
 # ******************************************************************************
 class MainConfig(BaseModel):
+    """Main configuration options"""
     LogLevel: LogLevels = Field(
         default=LogLevels.DEBUG,
         description="Verbosity of the log output "
@@ -60,7 +71,6 @@ class MainConfig(BaseModel):
         le=25,
         description="Maximum number of recent files to keep track of [1 - 25]. "
                     "Default is 10",
-
     )
     RecentFiles: List[FilePath] = Field(
         default=[],
@@ -70,6 +80,7 @@ class MainConfig(BaseModel):
 
 # ******************************************************************************
 CONFIG_FILENAME: str = 'preferences.toml'
+"""Filename of the configurations file"""
 
 
 # **************************************************************************
@@ -107,6 +118,7 @@ class TomlSource(ConfigSource):
 
 
 class TomlLoader(Loader):
+    """Loader class to load configuration from a TOML file"""
     @classmethod
     def populate_config(cls, config: dict, tomlSource: TomlSource):
         log = logging.getLogger(Rx.ApplicationName)
@@ -171,7 +183,7 @@ tomlkit.register_encoder(_encoder)
 
 
 # ******************************************************************************
-class AppConfig(BaseConfig):
+class RSettings(BaseConfig):
     Main: MainConfig
 
     CONFIG_SOURCES = TomlSource(tomlFile=Rx.ConfigPath / CONFIG_FILENAME)
@@ -217,8 +229,8 @@ if __name__ == '__main__':
     # Write config file
     if not Path(CONFIG_FILENAME).is_file():
         print(f"Creating config file: {CONFIG_FILENAME}")
-        AppConfig.create()
+        RSettings.create()
 
     # Read the config file
-    appConfig = AppConfig()
+    appConfig = RSettings()
     print(appConfig.model_dump_json())

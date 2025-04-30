@@ -12,20 +12,8 @@
 ********************************************************************************
 ``main``
 ********************************************************************************
-
-This folder is the home of all the source code of the `RAxis` core application.
-The :py:mod:`main <rekhtanavees.main>` contains the main application object
-instantiation and startup.
-
-
-rekhtanavees.main
-================================================================================
-
 .. automodule:: rekhtanavees.main
     :members:
-    :undoc-members:
-    :private-members:
-    :special-members:
 
 .. raw:: latex
 

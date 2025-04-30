@@ -30,7 +30,7 @@ class AudioRecorder(QObject):
     This QObject based class takes an audio input device and forms a convenient
     wrapper around it for audio management.
 
-    First recording should be done with `initialRun` method call, and subsquent
+    First recording should be done with `initialRun` method call, and subsequent
     calls can be made directly to audioInput methods.
 
     Attributes:

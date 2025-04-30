@@ -1,20 +1,27 @@
 # -*- coding: utf-8 -*-
-
 # ******************************************************************************
-# Copyright (c) 2022. All rights reserved.
+# Copyright (c) 202. All rights reserved.
 #
 # This work is licensed under the Creative Commons Attribution 4.0 International License.
 # To view a copy of this license, visit # http://creativecommons.org/licenses/by/4.0/.
 #
 # Author:      RoXimn <roximn@rixir.org>
 # ******************************************************************************
+"""Collection of miscellaneous helper functions.
+
+This module contains assorted helper functions which do not yet have a
+separate module.
+"""
+# ******************************************************************************
 import re
 import unicodedata
 import string
 
 # ******************************************************************************
-MinimumValidChars = "-_.()" + string.ascii_letters + string.digits
-FilenameCharLimit = 255
+MinimumValidChars: str = "-_.()" + string.ascii_letters + string.digits
+"""Set of characters which can be universally used in names and titles."""
+FilenameCharLimit: int = 255
+"""Upper limit to filename length."""
 
 
 # ******************************************************************************
@@ -46,9 +53,10 @@ def slugify(name: str, whitelist: str = MinimumValidChars, replace: str = ' ') -
         A *slug* is a short label for something, containing only letters, numbers,
         underscores or hyphens (as in `Django` docs).
 
-    The characters in the `replace` string are replaced, followed by decomposed
-    normalization to ascii characters, then the whitelisted characters are filtered
-    and lastly the name length is truncated to `utils.FilenameCharLimit`.
+    The characters matching the `replace` string characters are replaced,
+    followed by *decomposed normalization* to `ASCII` characters,
+    then the whitelisted characters are filtered
+    and lastly the name length is truncated to :py:const:`~rekhtanavees.misc.FilenameCharLimit`.
 
     Args:
         name (str): the string to *slugify*.

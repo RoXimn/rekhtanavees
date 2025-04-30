@@ -17,6 +17,7 @@ Modules
     constants
     settings
     audio/index
+    misc/index
 
 ..  raw:: latex
 

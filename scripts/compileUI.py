@@ -103,6 +103,7 @@ if __name__ == '__main__':
     # Compile Resource files
     rcFiles = commonFiles[:]
     rcFiles.extend([
+        'rekhtanavees\\ui\\fonts',
     ])
     for filename in rcFiles:
         compileRC(filename)

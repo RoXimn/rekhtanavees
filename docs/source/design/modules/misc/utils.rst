@@ -10,9 +10,9 @@
 :orphan:
 
 ********************************************************************************
-``clipimage``
+``utils``
 ********************************************************************************
-.. automodule:: rekhtanavees.audio.clipimage
+.. automodule:: rekhtanavees.misc.utils
     :members:
 
 .. raw:: latex

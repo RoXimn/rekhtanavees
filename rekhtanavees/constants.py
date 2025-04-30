@@ -7,6 +7,8 @@
 #
 # Author:      RoXimn <roximn@rixir.org>
 # ******************************************************************************
+"""Global constants used across the application"""
+# ******************************************************************************
 import os
 import platform
 from collections import namedtuple
@@ -20,6 +22,7 @@ RVersionType = namedtuple('RVersionType', ['major', 'minor', 'patch', 'phase'])
 
 # ******************************************************************************
 class RVersion:
+    """Comparable version class"""
     def __init__(self, major: int = 0, minor: int = 0, patch: int = 0, phase: str = ''):
         self._version = RVersionType(major, minor, patch, phase)
 
@@ -45,9 +48,10 @@ class RVersion:
 
     def _isComparable(self, other: 'RVersion'):
         """Check if the objects can be compared w.r.t. version"""
-        return \
-            isinstance(getattr(self, '_version', None), RVersionType) and \
+        return (
+            isinstance(getattr(self, '_version', None), RVersionType) and
             isinstance(getattr(other, '_version', None), RVersionType)
+        )
 
     def __lt__(self, other: 'RVersion'):
         if not self._isComparable(other):
@@ -67,10 +71,11 @@ class RVersion:
     def __eq__(self, other: 'RVersion'):
         if not self._isComparable(other):
             return NotImplemented
-        return \
-            (self._version.major == other._version.major) and \
-            (self._version.minor == other._version.minor) and \
+        return (
+            (self._version.major == other._version.major) and
+            (self._version.minor == other._version.minor) and
             (self._version.patch == other._version.patch)
+        )
 
     def __ne__(self, other: 'RVersion'):
         if not self._isComparable(other):
@@ -136,9 +141,9 @@ class RConstants:
     @property
     def Licence(self) -> str:
         """Application usage licence text"""
-        return 'This work is licensed under the Creative Commons Attribution ' \
-               '4.0 International License. To view a copy of this license, ' \
-               'visit http://creativecommons.org/licenses/by/4.0/.'
+        return ('This work is licensed under the Creative Commons Attribution '
+                '4.0 International License. To view a copy of this license, '
+                'visit http://creativecommons.org/licenses/by/4.0/.')
 
     @property
     def ApplicationUUID(self) -> UUID:

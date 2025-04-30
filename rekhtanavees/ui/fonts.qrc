@@ -1,0 +1,9 @@
+<RCC>
+    <qresource prefix="/fonts">
+        <file>fonts/NotoNaskhArabic-Regular.ttf</file>
+        <file>fonts/NotoSansMono-Condensed-Regular.ttf</file>
+        <file>fonts/NotoSansMono-Regular.ttf</file>
+        <file>fonts/NotoSans-Regular.ttf</file>
+        <file>fonts/Mehr_Nastaliq_Web_v2.0.ttf</file>
+    </qresource>
+</RCC>

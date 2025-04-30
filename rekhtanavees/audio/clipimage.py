@@ -7,9 +7,11 @@
 #
 # Author:      RoXimn <roximn@rixir.org>
 # ******************************************************************************
+from typing import Optional
+
 import numpy as np
 from PySide6.QtCore import (Qt, QRectF, QPointF, QMargins)
-from PySide6.QtGui import (QImage, QPainter, QBrush, QFont, QTransform)
+from PySide6.QtGui import (QImage, QPainter, QBrush, QFont, QTransform, QColor)
 from pydantic import BaseModel
 
 from rekhtanavees.audio.audioclip import AudioClip
@@ -18,6 +20,7 @@ from rekhtanavees.audio.spectra import COLOR_MAPS_8BIT
 
 # **************************************************************************
 class Word(BaseModel):
+    """A transcribed word"""
     start: float
     end: float
     word: str
@@ -26,6 +29,7 @@ class Word(BaseModel):
 
 # **************************************************************************
 class Segment(BaseModel):
+    """A transcribed segment"""
     id: int
     start: float
     end: float
@@ -38,18 +42,18 @@ class Segment(BaseModel):
 
 # **************************************************************************
 class ClipImage:
-    """Audio class representing an audio signal.
+    """Image rendering of an audio signal.
 
-    An audio signal wrapper class for convenient audio signal processing and
-    management.
+    Handles rendering of an audio signal as mel-spectrogram image and the
+    words segments.
 
     Attributes:
         audioClip (AudioClip): the audio clip this image represents
         widthPerSec (Optional[int]): Width of spectrogram image corresponding to one second
         height (Optional[int]): Height of spectrogram image
         direction (Optional[Qt.LayoutDirection]): Defaults to Qt.LayoutDirection.LeftToRight
-        cmap (Optional[str]): Colormap name to use for the spectrogram. Opt from ``magma``
-            and ``grayscale``. Add ``_r`` to name for reverse map.
+        cmap (Optional[str]): Colormap name to use for the spectrogram. Opt from ``magma``,
+            ``viridis`` and ``grayscale``. Add ``_r`` to name for reverse map.
     """
     # **************************************************************************
     def __init__(self,
@@ -73,7 +77,7 @@ class ClipImage:
 
     # **************************************************************************
     def time2pixel(self, t: int, clipStart: int = 0) -> int:
-        """Get the x coordinate corresponding to the given time(milliseconds)"""
+        """Get the x coordinate corresponding to the given time(ms)"""
         return (t - clipStart) * self.widthPerSec // 1000
 
     # **************************************************************************
@@ -87,7 +91,7 @@ class ClipImage:
             nFFT (Optional[int]): Window length of Short FFT sampling of audio signal
             markers (Optional[dict[int, list[int]]]): a `dict` with color as key,
                 mapping to a list of time markers (in milliseconds).
-                For example, {192: [1000, 2000, 3000], 128: [50, 1120, 2455]},
+                For example, `{192: [1000, 2000, 3000], 128: [50, 1120, 2455]}`,
                 different colored markers can indicate regular time interval,
                 word boundaries, confidence, probability, etc.
 
@@ -104,17 +108,14 @@ class ClipImage:
         duration: int = end - start
         if spectrum.ndim == 2:
             imgHeight, imgWidth = spectrum.shape
-            print(f'Spectrum {imgWidth}x{imgHeight}: {start}-{end}[{duration}ms]')
+            # print(f'Spectrum {imgWidth}x{imgHeight}: {start}-{end}[{duration}ms]')
 
             if markers is not None:
                 assert isinstance(markers, dict)
                 for c, ticks in markers.items():
-                    # print(c, ticks)
                     tickValue = c % 256
                     ticks: list[int] = [t for t in ticks if start <= t <= end]
-                    # print(tickValue, ticks)
                     marks = [self.time2pixel(t, start) for t in ticks]
-                    # print(marks)
                     for xt in marks:
                         spectrum[:, xt] = tickValue
 
@@ -134,17 +135,17 @@ class ClipImage:
 
     # **************************************************************************
     def renderWords(self, image: QImage, label: str, words: list[Word]) -> QImage:
-        """Write the word at the given timeframe on the image with given marking.
+        """Write the words at respective timeframes upon the image.
 
         Args:
             image (QImage): image to render upon
             label (str): segment label
-            words (Word): the word string to write
+            words (Word): list of words to render
 
         Note:
             Needs the ``startTime`` attribute on the given ``image``.
 
-        ..TODO:
+        TODO:
             Add user rendering config
         """
         assert image.format() == QImage.Format_ARGB32 and hasattr(image, 'startTime')
@@ -164,7 +165,9 @@ class ClipImage:
             wordBox = QRectF(QPointF(lt, top), QPointF(rt, btm))
             if self.direction == Qt.LayoutDirection.RightToLeft:
                 transform: QTransform = QTransform()
+                # start at right edge
                 transform.translate(image.width(), 0)
+                # flip x-axis
                 transform.scale(-1, 1)
                 wordBox = transform.mapRect(wordBox)
 
@@ -176,7 +179,7 @@ class ClipImage:
             white = QColor(Qt.white)
             white.setAlpha(int(w.probability*255))
             p.setPen(white)
-            p.setFont(QFont('Noto Sans Arabic', 18))
+            p.setFont(QFont('Noto Naskh Arabic', 18))
             p.drawText(wordBox, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter, w.word)
 
             p.setPen(Qt.black)
@@ -220,9 +223,11 @@ if __name__ == '__main__':
     tms = lambda x: int(x * 1000)
     j = json.loads(Path(r"D:\tools\urdu-youtube\zia-mohyeddin\Dawood Rehber ｜ Zia Mohyeddin Ke Sath Aik Shaam Vol.24 [cHUQ1P2kb58].json").read_text(encoding='utf-8'))
     ac = AudioClip.createAudioClip(Path(r"D:\tools\urdu-youtube\zia-mohyeddin\Dawood Rehber ｜ Zia Mohyeddin Ke Sath Aik Shaam Vol.24 [cHUQ1P2kb58].opus"))
+    print(ac.audioSignal.ndim, ac.audioSignal.dtype, ac.audioSignal.dtype.itemsize, ac.sampleRate)
     ci = ClipImage(ac, widthPerSec=256, height=96, direction=Qt.LayoutDirection.RightToLeft, cmap='viridis')
 
     for segment in [Segment.parse_obj(s) for s in j['segments'][:10]]:
-        img = ci.renderSpectrum(startTime=int(segment.start * 1000), endTime=int(segment.end * 1000))
+        img = ci.renderSpectrum(startTime=tms(segment.start), endTime=tms(segment.end))
         img = ci.renderWords(image=img, label=f'#{segment.id}', words=segment.words)
+        print(f'saving segment{segment.id:002}.png')
         img.save(f'segment{segment.id:002}.png')

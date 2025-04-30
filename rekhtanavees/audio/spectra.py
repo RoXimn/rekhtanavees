@@ -7,11 +7,19 @@
 #
 # Author:      RoXimn <roximn@rixir.org>
 # ******************************************************************************
+from typing import Annotated, TypeAlias
+
 from PySide6.QtCore import (QPointF, QRect)
 from PySide6.QtGui import (QBrush, QColor, QImage, QLinearGradient, QPainter)
 
 # ******************************************************************************
-_MAGMA_COLOR_TABLE = (
+LUT = Annotated[tuple[int, ...], 256]
+ColorTable: TypeAlias = tuple[tuple[int, int, int], ...]
+GradientTable: TypeAlias = tuple[tuple[float, tuple[int, int, int]], ...]
+
+
+# ******************************************************************************
+_MAGMA_COLOR_TABLE: ColorTable = (
     (0, 0, 4),
     (1, 0, 5),
     (1, 1, 6),
@@ -270,7 +278,7 @@ _MAGMA_COLOR_TABLE = (
     (253, 254, 192),
 )
 
-_VIRIDIS_COLOR_TABLE = (
+_VIRIDIS_COLOR_TABLE: ColorTable = (
     (68, 1, 84),
     (68, 2, 85),
     (69, 3, 87),
@@ -529,7 +537,7 @@ _VIRIDIS_COLOR_TABLE = (
     (254, 231, 36)
 )
 
-_GRAYSCALE_GRADIENT = (
+_GRAYSCALE_GRADIENT: GradientTable = (
     (0.000,  (32,  32,  32)),
     (0.250,  (64,  64,  64)),
     (0.500,  (98,  96,  96)),
@@ -540,17 +548,19 @@ _GRAYSCALE_GRADIENT = (
 
 
 # ******************************************************************************
-def createColorMap(colortable: tuple[tuple[int, int, int], ...],
-                   reverse: bool = False) -> list[int]:
+def createColorMap(colortable: ColorTable,
+                   reverse: bool = False) -> LUT:
+    """Convert RGB color values to RGBA lookup table, with option to reverse"""
     lut = [QColor(r, g, b).rgba() for r, g, b in colortable]
     if reverse:
         lut.reverse()
-    return lut
+    return tuple(lut)
 
 
 # ******************************************************************************
-def createGradientMap(gradient: tuple[tuple[float, tuple[int, int, int]], ...],
-                      reverse: bool = False) -> list[int]:
+def createGradientMap(gradient: GradientTable,
+                      reverse: bool = False) -> LUT:
+    """Convert RGB gradient values to RGBA lookup table, with option to reverse"""
     p1, p2 = QPointF(0, 0), QPointF(255, 0)
     if reverse:
         p1, p2 = p2, p1
@@ -563,7 +573,7 @@ def createGradientMap(gradient: tuple[tuple[float, tuple[int, int, int]], ...],
     painter.begin(lut)
     painter.fillRect(QRect(0, 0, 256, 1), QBrush(linearGradient))
     painter.end()
-    return [lut.pixelColor(n, 0).rgba() for n in range(256)]
+    return tuple(lut.pixelColor(n, 0).rgba() for n in range(256))
 
 
 # ******************************************************************************
@@ -574,7 +584,7 @@ MAGMA_LUT_R = createColorMap(_MAGMA_COLOR_TABLE, reverse=True)
 VIRIDIS_LUT = createColorMap(_VIRIDIS_COLOR_TABLE, reverse=False)
 VIRIDIS_LUT_R = createColorMap(_VIRIDIS_COLOR_TABLE, reverse=True)
 
-COLOR_MAPS_8BIT: dict[str, list[int]] = {
+COLOR_MAPS_8BIT: dict[str, LUT] = {
     'magma': MAGMA_LUT,
     'magma_r': MAGMA_LUT_R,
     'viridis': VIRIDIS_LUT,
@@ -582,5 +592,16 @@ COLOR_MAPS_8BIT: dict[str, list[int]] = {
     'grayscale': GRAYSCALE_LUT,
     'grayscale_r': GRAYSCALE_LUT_R,
 }
+"""
+8bit RGBA colormaps
+
+*   magma
+*   viridis
+*   grayscale
+
+and their reverse maps.
+
+:meta hide-value:
+"""
 
 # ******************************************************************************

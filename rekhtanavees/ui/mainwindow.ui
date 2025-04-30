@@ -15,7 +15,7 @@
    <string>Rekhta Navees</string>
   </property>
   <property name="windowIcon">
-   <iconset resource="main.qrc">
+   <iconset resource="mainwindow.qrc">
     <normaloff>:/images/icons/feather.png</normaloff>:/images/icons/feather.png</iconset>
   </property>
   <widget class="QWidget" name="centralwidget">
@@ -37,74 +37,226 @@
     </property>
     <item>
      <widget class="QSplitter" name="splitter">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <property name="orientation">
-       <enum>Qt::Horizontal</enum>
+       <enum>Qt::Orientation::Horizontal</enum>
       </property>
       <widget class="QWidget" name="layoutWidget">
-       <layout class="QVBoxLayout" name="verticalLayout">
+       <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0,0">
         <property name="spacing">
          <number>2</number>
+        </property>
+        <property name="sizeConstraint">
+         <enum>QLayout::SizeConstraint::SetMinAndMaxSize</enum>
         </property>
         <item>
          <widget class="QLabel" name="lblRecordings">
           <property name="text">
-           <string>Audio Recordings</string>
+           <string/>
           </property>
          </widget>
         </item>
         <item>
-         <widget class="QScrollArea" name="scrollArea">
-          <property name="frameShape">
-           <enum>QFrame::NoFrame</enum>
-          </property>
-          <property name="frameShadow">
-           <enum>QFrame::Plain</enum>
-          </property>
-          <property name="lineWidth">
-           <number>1</number>
-          </property>
-          <property name="midLineWidth">
-           <number>0</number>
+         <widget class="QGraphicsView" name="videoView">
+          <property name="focusPolicy">
+           <enum>Qt::FocusPolicy::NoFocus</enum>
           </property>
           <property name="verticalScrollBarPolicy">
-           <enum>Qt::ScrollBarAlwaysOn</enum>
+           <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
           </property>
           <property name="horizontalScrollBarPolicy">
-           <enum>Qt::ScrollBarAsNeeded</enum>
+           <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
           </property>
-          <property name="widgetResizable">
-           <bool>true</bool>
+          <property name="cacheMode">
+           <set>QGraphicsView::CacheModeFlag::CacheBackground</set>
           </property>
-          <widget class="QWidget" name="scrollContents">
-           <property name="geometry">
-            <rect>
-             <x>0</x>
-             <y>0</y>
-             <width>781</width>
-             <height>503</height>
-            </rect>
-           </property>
-           <layout class="QVBoxLayout" name="recordingsLayout">
-            <property name="spacing">
-             <number>0</number>
-            </property>
-            <property name="sizeConstraint">
-             <enum>QLayout::SetMinimumSize</enum>
-            </property>
-            <property name="leftMargin">
-             <number>2</number>
-            </property>
-            <property name="topMargin">
-             <number>2</number>
-            </property>
-            <property name="rightMargin">
-             <number>2</number>
-            </property>
-            <property name="bottomMargin">
-             <number>2</number>
-            </property>
-           </layout>
-          </widget>
+         </widget>
+        </item>
+        <item>
+         <widget class="QSlider" name="playSlider">
+          <property name="focusPolicy">
+           <enum>Qt::FocusPolicy::NoFocus</enum>
+          </property>
+          <property name="orientation">
+           <enum>Qt::Orientation::Horizontal</enum>
+          </property>
+          <property name="invertedAppearance">
+           <bool>false</bool>
+          </property>
+          <property name="invertedControls">
+           <bool>false</bool>
+          </property>
+          <property name="tickPosition">
+           <enum>QSlider::TickPosition::TicksAbove</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="audioGroup">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="title">
+           <string/>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_3">
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout">
+             <property name="sizeConstraint">
+              <enum>QLayout::SizeConstraint::SetMinimumSize</enum>
+             </property>
+             <item>
+              <widget class="QPlainTextEdit" name="transcript">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="font">
+                <font>
+                 <family>Noto Naskh Arabic</family>
+                 <pointsize>24</pointsize>
+                </font>
+               </property>
+               <property name="styleSheet">
+                <string notr="true">QPlainTextEdit {
+border: 1px solid gray;
+border-radius: 10px;
+padding: 0 8px;
+background: darkgray;
+}
+QPlainTextEdit::focus {
+border-color: red;
+background: white;
+selection-background-color: darkgray;
+}</string>
+               </property>
+               <property name="verticalScrollBarPolicy">
+                <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
+               </property>
+               <property name="horizontalScrollBarPolicy">
+                <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
+               </property>
+               <property name="tabChangesFocus">
+                <bool>true</bool>
+               </property>
+               <property name="lineWrapMode">
+                <enum>QPlainTextEdit::LineWrapMode::NoWrap</enum>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="lblSegment">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="font">
+                <font>
+                 <family>Noto Sans</family>
+                 <pointsize>12</pointsize>
+                 <bold>true</bold>
+                </font>
+               </property>
+               <property name="text">
+                <string>100</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <widget class="QScrollArea" name="scrollArea">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>64</height>
+              </size>
+             </property>
+             <property name="focusPolicy">
+              <enum>Qt::FocusPolicy::NoFocus</enum>
+             </property>
+             <property name="layoutDirection">
+              <enum>Qt::LayoutDirection::RightToLeft</enum>
+             </property>
+             <property name="frameShape">
+              <enum>QFrame::Shape::NoFrame</enum>
+             </property>
+             <property name="frameShadow">
+              <enum>QFrame::Shadow::Plain</enum>
+             </property>
+             <property name="verticalScrollBarPolicy">
+              <enum>Qt::ScrollBarPolicy::ScrollBarAlwaysOff</enum>
+             </property>
+             <property name="sizeAdjustPolicy">
+              <enum>QAbstractScrollArea::SizeAdjustPolicy::AdjustIgnored</enum>
+             </property>
+             <property name="widgetResizable">
+              <bool>true</bool>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignmentFlag::AlignCenter</set>
+             </property>
+             <widget class="QWidget" name="scrollAreaWidgetContents">
+              <property name="geometry">
+               <rect>
+                <x>0</x>
+                <y>0</y>
+                <width>778</width>
+                <height>114</height>
+               </rect>
+              </property>
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <layout class="QHBoxLayout" name="horizontalLayout_2">
+               <item>
+                <widget class="QLabel" name="lblSpectrum">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="minimumSize">
+                  <size>
+                   <width>0</width>
+                   <height>96</height>
+                  </size>
+                 </property>
+                 <property name="text">
+                  <string>Spectrum</string>
+                 </property>
+                 <property name="alignment">
+                  <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </widget>
+           </item>
+          </layout>
          </widget>
         </item>
        </layout>
@@ -131,7 +283,7 @@
       <string>R&amp;ecent</string>
      </property>
      <property name="icon">
-      <iconset resource="main.qrc">
+      <iconset resource="mainwindow.qrc">
        <normaloff>:/images/icons/bookmark-new-list.png</normaloff>:/images/icons/bookmark-new-list.png</iconset>
      </property>
      <property name="separatorsCollapsible">
@@ -187,7 +339,7 @@
   </widget>
   <action name="actionOpen">
    <property name="icon">
-    <iconset resource="main.qrc">
+    <iconset resource="mainwindow.qrc">
      <normaloff>:/images/icons/folder-green.png</normaloff>:/images/icons/folder-green.png</iconset>
    </property>
    <property name="text">
@@ -205,7 +357,7 @@
   </action>
   <action name="actionExit">
    <property name="icon">
-    <iconset resource="main.qrc">
+    <iconset resource="mainwindow.qrc">
      <normaloff>:/images/icons/system-shutdown.png</normaloff>:/images/icons/system-shutdown.png</iconset>
    </property>
    <property name="text">
@@ -214,7 +366,7 @@
   </action>
   <action name="actionAbout">
    <property name="icon">
-    <iconset resource="main.qrc">
+    <iconset resource="mainwindow.qrc">
      <normaloff>:/images/icons/feather.png</normaloff>:/images/icons/feather.png</iconset>
    </property>
    <property name="text">
@@ -229,7 +381,7 @@
   </action>
   <action name="actionNew">
    <property name="icon">
-    <iconset resource="main.qrc">
+    <iconset resource="mainwindow.qrc">
      <normaloff>:/images/icons/folder-new.png</normaloff>:/images/icons/folder-new.png</iconset>
    </property>
    <property name="text">
@@ -244,7 +396,7 @@
   </action>
   <action name="actionAboutQt">
    <property name="icon">
-    <iconset resource="main.qrc">
+    <iconset resource="mainwindow.qrc">
      <normaloff>:/images/icons/about-qt.png</normaloff>:/images/icons/about-qt.png</iconset>
    </property>
    <property name="text">
@@ -253,7 +405,7 @@
   </action>
   <action name="actionClearRecent">
    <property name="icon">
-    <iconset resource="main.qrc">
+    <iconset resource="mainwindow.qrc">
      <normaloff>:/images/icons/edit-delete-shred.png</normaloff>:/images/icons/edit-delete-shred.png</iconset>
    </property>
    <property name="text">
@@ -265,7 +417,7 @@
   </action>
   <action name="actionOpenSource">
    <property name="icon">
-    <iconset resource="main.qrc">
+    <iconset resource="mainwindow.qrc">
      <normaloff>:/images/icons/folder-activities.png</normaloff>:/images/icons/folder-activities.png</iconset>
    </property>
    <property name="text">
@@ -274,7 +426,7 @@
   </action>
   <action name="actionRecordingAddNew">
    <property name="icon">
-    <iconset resource="main.qrc">
+    <iconset resource="mainwindow.qrc">
      <normaloff>:/images/icons/list-add.png</normaloff>:/images/icons/list-add.png</iconset>
    </property>
    <property name="text">
@@ -289,7 +441,7 @@
   </action>
   <action name="actionRecordingRemove">
    <property name="icon">
-    <iconset resource="main.qrc">
+    <iconset resource="mainwindow.qrc">
      <normaloff>:/images/icons/list-remove.png</normaloff>:/images/icons/list-remove.png</iconset>
    </property>
    <property name="text">
@@ -304,7 +456,7 @@
   </action>
   <action name="actionRecordingClearAll">
    <property name="icon">
-    <iconset resource="main.qrc">
+    <iconset resource="mainwindow.qrc">
      <normaloff>:/images/icons/edit-clear-list.png</normaloff>:/images/icons/edit-clear-list.png</iconset>
    </property>
    <property name="text">
@@ -316,8 +468,12 @@
   </action>
  </widget>
  <layoutdefault spacing="2" margin="0"/>
+ <tabstops>
+  <tabstop>videoView</tabstop>
+ </tabstops>
  <resources>
-  <include location="main.qrc"/>
+  <include location="mainwindow.qrc"/>
+  <include location="fonts.qrc"/>
  </resources>
  <connections/>
  <designerdata>

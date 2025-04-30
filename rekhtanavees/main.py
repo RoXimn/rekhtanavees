@@ -7,6 +7,12 @@
 #
 # Author:      RoXimn <roximn@rixir.org>
 # ******************************************************************************
+"""Application main module.
+
+This module uses houses the :py:func:`~rekhtanavees.main.main` function, which
+constructs the PySide QApplication.
+"""
+# ******************************************************************************
 from __future__ import annotations
 
 import logging
@@ -18,7 +24,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QPalette
 from PySide6.QtWidgets import QApplication, QStyleFactory
 
-from rekhtanavees.settings import AppConfig, Themes
+from rekhtanavees.settings import RSettings, Themes
 from rekhtanavees.constants import Rx
 from rekhtanavees.ui.mainwindow import MainWindow
 from rekhtanavees.misc.utils import slugify
@@ -72,6 +78,9 @@ def _createLogger(dataPath: str) -> logging.Logger:
             'root': {
                 'level': 'NOTSET',
                 'handlers': ['file', 'stdout'],
+            },
+            'numba': {
+                'level': 'WARNING'
             }
         },
     })
@@ -105,18 +114,19 @@ class RApplication(QApplication):
         # ----------------------------------------------------------------------
         # Preferences
         # os.chdir(Rx.ConfigPath)  # Change directory to settings file location
-        appConfig = AppConfig()
+        settings = RSettings()
         logger.info(f'Preferences loaded')
 
-        logger.setLevel(appConfig.Main.LogLevel.name)
-        logger.debug(f'Log level set to {appConfig.Main.LogLevel}')
+        logger.setLevel(settings.Main.LogLevel.name)
+        logger.debug(f'Log level set to {settings.Main.LogLevel}')
 
         # ----------------------------------------------------------------------
         # Theming
-        self.applyTheme(appConfig.Main.Theme)
+        self.applyTheme(settings.Main.Theme)
 
     # **************************************************************************
     def applyTheme(self, theme: Themes) -> None:
+        """Apply user selected theme to the application main window"""
         logging.getLogger(Rx.ApplicationName).debug(f'Applying theme {theme}...')
         # **********************************************************************
         if theme == Themes.Light:
@@ -150,14 +160,20 @@ class RApplication(QApplication):
     # **************************************************************************
     def start(self):
         """Start application event loop."""
-        logging.getLogger(Rx.ApplicationName).debug('Starting application event loop...')
+        qApp.logger.debug('Starting application event loop...')
         return self.exec()
 
     # **************************************************************************
     def onQuit(self):
         """Close application resources (QSettings and log)."""
-        logging.getLogger(Rx.ApplicationName).log(99, f'{Rx.ApplicationName} shutting down' + '\n'*3)
+        qApp.logger.log(99, f'{Rx.ApplicationName} shutting down' + '\n'*3)
         logging.shutdown()
+
+    # **************************************************************************
+    @property
+    def logger(self) -> logging.Logger:
+        """Application wide logger"""
+        return logging.getLogger(Rx.ApplicationName)
 
 
 # ******************************************************************************

@@ -14,7 +14,7 @@ from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (QCheckBox, QFileDialog, QFormLayout, QFrame, QHBoxLayout, QLineEdit, QMessageBox, QPlainTextEdit, QPushButton,
                                QSizePolicy, QWizard, QWizardPage)
 
-from rekhtanavees.settings import AppConfig
+from rekhtanavees.settings import RSettings
 from rekhtanavees.audio.audioproject import AudioProject, AudioProjectException
 from rekhtanavees.constants import Rx
 from rekhtanavees.misc.utils import isValidProjectName
@@ -209,7 +209,7 @@ class RProjectWizard(QWizard):
     def __init__(self, parent=None, newProject: bool = False):
         super().__init__(parent)
 
-        baseDirectory = AppConfig().Main.ProjectBaseDirectory
+        baseDirectory = RSettings().Main.ProjectBaseDirectory
         # baseDirectory = qApp.settings.value(self.ProjectBaseDirectorySID)  # type: ignore
         # if baseDirectory is None:
         #     baseDirectory = self.ProjectBaseDirectoryDefault
@@ -233,7 +233,7 @@ class RProjectWizard(QWizard):
     def accept(self):
         if self.isNewProject:
             if self.page(0).field('SetDefaultBaseDirectory'):
-                settings = AppConfig()
+                settings = RSettings()
                 settings.Main.ProjectBaseDirectory = Path(self.page(0).field('BaseDirectory').strip())
                 settings.save()
                 # qApp.settings.setValue(self.ProjectBaseDirectorySID,

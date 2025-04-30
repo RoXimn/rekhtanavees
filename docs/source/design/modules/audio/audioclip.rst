@@ -12,15 +12,8 @@
 ********************************************************************************
 ``audioclip``
 ********************************************************************************
-
-This module contains the audio clip processing related code.
-
-rekhtanavees.audio.audioclip
-================================================================================
-
 .. automodule:: rekhtanavees.audio.audioclip
     :members:
-    :undoc-members:
 
 .. raw:: latex
 

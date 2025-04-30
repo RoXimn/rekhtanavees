@@ -7,14 +7,15 @@
     Author:      RoXimn <roximn@rixir.org>
     ****************************************************************************
 
-:orphan:
-
 ********************************************************************************
-``clipimage``
+``misc``
 ********************************************************************************
-.. automodule:: rekhtanavees.audio.clipimage
-    :members:
+..  toctree::
+    :maxdepth: 1
 
-.. raw:: latex
+    utils
+    ytdownloader
 
-   \pagebreak
+..  raw:: latex
+
+    \pagebreak

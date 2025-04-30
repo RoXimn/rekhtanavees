@@ -8,7 +8,7 @@ license = "CC-BY-4.0"
 
 [tool.poetry.dependencies]
 python = "~3.12"
-pyside6 = "^6.7.0"
+pyside6 = {extras = ["addons"], version = "^6.7.1"}
 librosa = "^0.10.2"
 pymupdf = "^1.24.2"
 tomlkit = "^0.12.5"
@@ -19,6 +19,10 @@ strenum = "^0.4.15"
 pydantic-settings = "^2.2.1"
 tzdata = "^2024.1"
 orjson = "^3.10.3"
+pytube = "^15.0.0"
+tqdm = "^4.66.4"
+sounddevice = "^0.4.7"
+soundfile = "^0.12.1"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.10.0"
@@ -27,6 +31,7 @@ pytest = "^8.2.1"
 pyinstaller = "^6.6.0"
 sphinx-book-theme = "^1.1.2"
 autodoc-pydantic = "^2.2.0"
+pyside6-stubs = {git = "https://github.com/python-qt-tools/PySide6-stubs"}
 
 [build-system]
 requires = ["poetry-core"]

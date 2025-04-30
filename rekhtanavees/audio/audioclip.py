@@ -7,11 +7,14 @@
 #
 # Author:      RoXimn <roximn@rixir.org>
 # ******************************************************************************
+import io
 from pathlib import Path
 
 import librosa
 import numpy as np
+from PySide6.QtCore import QBuffer, QIODevice
 from numpy.typing import NDArray
+from scipy.io import wavfile
 
 
 # ******************************************************************************
@@ -63,6 +66,36 @@ class AudioClip(object):
         ac = AudioClip()
         ac.audioSignal, ac.sampleRate = librosa.load(filePath, sr=None, mono=True)
         return ac
+
+    # **************************************************************************
+    def getSlice(self, startTime: int = None, endTime: int = None) -> NDArray:
+        assert self.audioSignal is not None and isinstance(self.audioSignal, np.ndarray)
+        assert self.audioSignal.ndim == 1, f"Single channel audio required; [{self.audioSignal.ndim}] channel given"
+        LAST = self.audioSignal.shape[0]
+        if LAST < 0:
+            return np.array([])
+
+        firstSample = 0 if startTime is None else self.time2sample(startTime)
+        lastSample = LAST if endTime is None else self.time2sample(endTime)
+        firstSample = max(min(firstSample, LAST), 0)    # Clip to [0-LAST]
+        lastSample = max(min(lastSample, LAST), 0)        # Clip to [0-LAST]
+        if firstSample > lastSample:                     # Ensure lastSample > firstSample
+            firstSample, lastSample = lastSample, firstSample
+        elif firstSample == lastSample:
+            return np.array([])
+
+        return self.audioSignal[firstSample:lastSample]
+
+    # **************************************************************************
+    def getIoBuffer(self, startTime: int = None, endTime: int = None) -> QBuffer:
+        wavData = io.BytesIO()
+        wavfile.write(wavData, self.sampleRate, self.getSlice(startTime, endTime))
+
+        # copy the bytes to a QBuffer
+        ioBuffer = QBuffer()
+        ioBuffer.setData(wavData.getvalue())
+        ioBuffer.open(QIODevice.ReadOnly)
+        return ioBuffer
 
     # **************************************************************************
     def createSpectrogram(self, startTime: int = None, endTime: int = None,
