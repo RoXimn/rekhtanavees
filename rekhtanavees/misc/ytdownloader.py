@@ -40,37 +40,37 @@ ErtugrulGhazi: tuple[str, ...] = (
 
 
 class DemucsModels(StrEnum):
-    htdemucs: str = auto()
+    htdemucs = auto()
     """first version of Hybrid Transformer Demucs. 
     Trained on MusDB + 800 songs. Default model."""
-    htdemucs_ft: str = auto()
+    htdemucs_ft = auto()
     """fine-tuned version of htdemucs, separation will take 4 times more time 
     but might be a bit better. Same training set as htdemucs."""
-    htdemucs_6s: str = auto()
+    htdemucs_6s = auto()
     """6 sources version of htdemucs, with piano and guitar being added 
     as sources. Note that the piano source is not working great at the moment."""
-    hdemucs_mmi: str = auto()
+    hdemucs_mmi = auto()
     """Hybrid Demucs v3, retrained on MusDB + 800 songs."""
-    mdx: str = auto()
+    mdx = auto()
     """trained only on MusDB HQ, winning model on track A at the MDX challenge."""
-    mdx_extra: str = auto()
+    mdx_extra = auto()
     """trained with extra training data (including MusDB test set), ranked 2nd 
     on the track B of the MDX challenge."""
-    mdx_q: str = auto()
+    mdx_q = auto()
     """quantized version fo mdx"""
-    mdx_extra_q: str = auto()
+    mdx_extra_q = auto()
     """quantized version fo mdx_extra"""
 
 
 class Devices(StrEnum):
-    cpu: str = auto()
-    cuda: str = auto()
-    cuda0: str = 'cuda:0'
-    cuda1: str = 'cuda:1'
-    cuda2: str = 'cuda:2'
-    cuda3: str = 'cuda:3'
-    cuda4: str = 'cuda:4'
-    cuda5: str = 'cuda:5'
+    cpu = auto()
+    cuda = auto()
+    cuda0 = 'cuda:0'
+    cuda1 = 'cuda:1'
+    cuda2 = 'cuda:2'
+    cuda3 = 'cuda:3'
+    cuda4 = 'cuda:4'
+    cuda5 = 'cuda:5'
 
 
 # ******************************************************************************
