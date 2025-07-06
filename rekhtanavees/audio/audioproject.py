@@ -18,7 +18,8 @@ from strenum import StrEnum
 import tomlkit
 from tomlkit.exceptions import TOMLKitError
 from pydantic import (
-    BaseModel, Field, EmailStr, FilePath, ValidationError, PositiveInt, StringConstraints
+    BaseModel, Field, EmailStr, FilePath, ValidationError,
+    PositiveInt, StringConstraints
 )
 
 from rekhtanavees.constants import Rx
@@ -58,7 +59,7 @@ class Speaker(BaseModel):
 class Recording(BaseModel):
     audioClip: FilePath
     """Filename of the recorded audio clip, path relative to the project file"""
-    transcript: str
+    transcript: FilePath
     """Filename of the transcribed text file, path relative to the project file"""
     speakerId: PositiveInt | None = None
     tags: List[str] | None = None
@@ -77,7 +78,7 @@ class ProjectInfo(BaseModel):
 
 # ******************************************************************************
 def createProjectToml() -> tomlkit.TOMLDocument:
-    """Create a de novo configuration document in TOML format"""
+    """Create a de novo project document in TOML format"""
     tdoc = tomlkit.TOMLDocument()
     seperator = tomlkit.comment("*" * 78)
 
@@ -189,6 +190,7 @@ class AudioProject:
         self.title: str = ''
         self.projectFolder: str = ''
         self.originator: str = ''
+        self.email: str = ''
         self.narrative: str = ''
         self.createdOn: datetime = datetime.now(timezone.utc)
         self.lastSavedOn: datetime = self.createdOn
@@ -225,17 +227,39 @@ class AudioProject:
 
     # **************************************************************************
     @property
-    def author(self) -> str:
-        """Project author identity"""
+    def authorName(self) -> str:
+        """Project author name"""
         return self.originator
 
-    @author.setter
-    def author(self, author: str):
-        if isinstance(author, str):
-            author = author.strip()
-            if author and author != self.originator:
-                self.originator = author
-                self.isModified = True
+    @authorName.setter
+    def authorName(self, author: str):
+        assert isinstance(author, str)
+
+        author = author.strip()
+        if author and author != self.originator:
+            self.originator = author
+            self.isModified = True
+
+    # **************************************************************************
+    @property
+    def authorEmail(self) -> str:
+        """Project author email"""
+        return self.email
+
+    @authorEmail.setter
+    def authorEmail(self, authorEmail: str):
+        assert isinstance(authorEmail, str)
+
+        authorEmail = authorEmail.strip()
+        if authorEmail and authorEmail != self.email:
+            self.email = authorEmail
+            self.isModified = True
+
+    # **************************************************************************
+    @property
+    def author(self) -> str:
+        """Project author identity"""
+        return f'{self.originator} <{self.email}>'
 
     # **************************************************************************
     @property
@@ -277,6 +301,7 @@ class AudioProject:
         if not self.projectFileExists():
             raise AudioProjectException(f'Loading non-existent project file {projectFile}')
 
+        os.chdir(self.projectFolder)
         try:
             with open(projectFile, mode='rb') as tomlFile:
                 tdoc: tomlkit.TOMLDocument = tomlkit.load(tomlFile)
@@ -325,8 +350,10 @@ class AudioProject:
         assert 'general' in tdoc, '"general" table is absent'
         general: dict = tdoc['general']  # type: ignore
 
-        assert 'author' in general, '"author" key is absent'
-        self.originator = general['author']
+        assert 'authorName' in general, '"authorName" key is absent'
+        self.originator = general['authorName']
+        assert 'authorEmail' in general, '"authorEmail" key is absent'
+        self.email = general['authorEmail']
         if 'description' in general:
             self.narrative = general['description']
         if 'createdOn' in general:
@@ -337,8 +364,9 @@ class AudioProject:
         if 'recordings' in tdoc:
             for i, record in enumerate(tdoc['recordings']):  # type: ignore
                 assert 'audioClip' in record, f'"audioClip" key is absent in recording #{i}'
-                assert 'transcription' in record, f'"transcription" key is absent in recording #{i}'
-                recording = Recording(audioClip=record['audioClip'], transcription=record['transcription'])
+                assert 'transcript' in record, f'"transcript" key is absent in recording #{i}'
+                recording = Recording(audioClip=Path(record['audioClip']),
+                                      transcript=Path(record['transcript']))
 
                 self.recordings.append(recording)
 
@@ -361,7 +389,9 @@ class AudioProject:
         # General Section
         general = tomlkit.table()
         assert self.originator != '', 'Author not provided'
-        general.add('author', self.originator)
+        general['authorName'] = self.originator
+        assert self.email != '', 'Author email not provided'
+        general['authorEmail'] = self.email
         if self.narrative:
             general.add('description', self.narrative)
         general.add('createdOn', self.createdOn).add('lastSavedOn', self.lastSavedOn)
@@ -373,8 +403,8 @@ class AudioProject:
         for i, record in enumerate(self.recordings):
             recordings.append(
                 tomlkit.table()
-                .add('audioClip', record.audioClip)
-                .add('transcription', record.transcription)
+                .add('audioClip', str(record.audioClip))
+                .add('transcript', str(record.transcript))
             )
         tdoc.add('recordings', recordings)
         tdoc.add(tomlkit.nl()).add(tomlkit.comment("*" * 78))
@@ -388,7 +418,9 @@ class AudioProject:
 
         general = tdoc['general'] if 'general' in tdoc else toml.table()  # type: ignore
         assert self.originator != '', 'Author not provided'
-        general['author'] = self.originator
+        general['authorName'] = self.originator
+        assert self.email != '', 'Author email not provided'
+        general['authorEmail'] = self.email
         if self.narrative:
             general['description'] = self.narrative
         elif 'description' in general:
@@ -397,27 +429,28 @@ class AudioProject:
         general['lastSavedOn'] = self.lastSavedOn
         tdoc['general'] = general
 
-        recordings = tdoc['recordings'] if 'recordings' in tdoc else toml.aot()  # type: ignore
+        recordings = tdoc['recordings'] if 'recordings' in tdoc else tomlkit.aot()  # type: ignore
         R, r = len(self.recordings), len(recordings)
         hasMore: bool = R > r
         recordingsToUpdate = self.recordings[:(r if hasMore else R)]
         for i, record in enumerate(recordingsToUpdate):
             recordings[i].update({
-                'audioClip': record.audioClip,
-                'transcription': record.transcription
+                'audioClip': str(record.audioClip),
+                'transcript': str(record.transcript)
             })
         if hasMore:
             for i, record in enumerate(self.recordings[r:]):
                 recordings.append(
                     tomlkit.table()
-                    .add('audioClip', record.audioClip)
-                    .add('transcription', record.transcription)
+                    .add('audioClip', str(record.audioClip))
+                    .add('transcript', str(record.transcript))
                 )
         else:
             del recordings[R:]
         tdoc['recordings'] = recordings
 
 
+# ******************************************************************************
 if __name__ == '__main__':
     f = Path(r"C:\Users\driyo\Documents\test\abc\abc.toml")
     p = loadProject(str(f))
@@ -429,3 +462,4 @@ if __name__ == '__main__':
     print(p.model_dump())
     p.save()
 
+# ******************************************************************************

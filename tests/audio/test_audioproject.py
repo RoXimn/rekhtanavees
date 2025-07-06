@@ -7,6 +7,7 @@
 #
 # Author:      RoXimn <roximn@rixir.org>
 # ******************************************************************************
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -18,35 +19,57 @@ from audio.audioproject import AudioProject, AudioProjectException, Recording
 
 
 # ******************************************************************************
-class TestAudioProject:
+def touchFiles(folder: str, files: list[str]) -> None:
+    """Create the specified files in the given folder.
+
+    Args:
+        folder (str): The path to the folder where the files should be created.
+        files (list[str]): A list of filenames to create.
+    """
+    os.chdir(folder)
+    for f in files:
+        (Path(folder) / Path(f)).touch(exist_ok=True)
+
+
+# ******************************************************************************
+class TestNaveesProject:
     PROJECT_TOML = ('# Rekhta Navees audio project file.\n'
                     '\n'
                     'RekhtaNaveesVersion = "0.1"\n'
                     '\n'
                     '[general]\n'
-                    'author = "abcdef <abcdef@gmail.com>"\n'
+                    'title = "Lmnop Qrst"\n'
+                    'authorName = "Abcdef"\n'
+                    'authorEmail = "abcdef@gmail.com"\n'
                     'description = "A description of the project"\n'
                     'createdOn = 1979-05-27T00:32:00-07:00\n'
                     'lastSavedOn = 1979-05-27T00:32:00+07:00\n'
                     '\n'
                     '[[recordings]]\n'
                     'audioClip = "recording001.flac"\n'
-                    'transcription = "recording001.txt"\n'
+                    'transcript = "recording001.txt"\n'
                     '\n'
                     '[[recordings]]\n'
                     'audioClip = "recording002.flac"\n'
-                    'transcription = "recording002.txt"\n'
+                    'transcript = "recording002.txt"\n'
                     '\n'
                     '[[recordings]]\n'
                     'audioClip = "recording003.flac"\n'
-                    'transcription = "recording003.txt"\n')
+                    'transcript = "recording003.txt"\n')
 
     # **************************************************************************
     @pytest.fixture(scope="session")
     def referenceTomlFilePath(self, tmp_path_factory) -> Path:
-        tomlPath: Path = tmp_path_factory.mktemp('data') / 'test.toml'
+        folder = tmp_path_factory.mktemp('data')
+        tomlPath: Path = folder / 'test.toml'
         with tomlPath.open('wb+') as toml:
             toml.write(self.PROJECT_TOML.encode('utf8'))
+
+        tdoc: tomlkit.TOMLDocument = tomlkit.loads(self.PROJECT_TOML)
+        a = [rec['audioClip'] for rec in tdoc['recordings']]
+        t = [rec['transcript'] for rec in tdoc['recordings']]
+        touchFiles(str(folder), a + t)
+
         return tomlPath
 
     # **************************************************************************
@@ -57,23 +80,35 @@ class TestAudioProject:
         audioProject.folder = str(tmpdir_factory.mktemp('test'))
 
         tdoc: TOMLDocument = tomlkit.loads(self.PROJECT_TOML)
-        audioProject.author = tdoc['general']['author']  # type: ignore
-        audioProject.description = tdoc['general']['description']  # type: ignore
-        audioProject.createdOn = tdoc['general']['createdOn']  # type: ignore
-        audioProject.lastSavedOn = tdoc['general']['lastSavedOn']  # type: ignore
+        audioProject.authorName = tdoc['general']['authorName']
+        audioProject.authorEmail = tdoc['general']['authorEmail']
+        audioProject.description = tdoc['general']['description']
+        audioProject.createdOn = tdoc['general']['createdOn']
+        audioProject.lastSavedOn = tdoc['general']['lastSavedOn']
 
-        for r in tdoc['recordings']:  # type: ignore
+        a = [rec['audioClip'] for rec in tdoc['recordings']]
+        t = [rec['transcript'] for rec in tdoc['recordings']]
+        touchFiles(audioProject.folder, a + t)
+
+        os.chdir(audioProject.folder)
+        for r in tdoc['recordings']:
             audioProject.recordings.append(
-                Recording(audioClip=r['audioClip'], transcription=r['transcription'])  # type: ignore
+                Recording(audioClip=r['audioClip'], transcript=r['transcript'])
             )
         return audioProject
 
     # **************************************************************************
     @pytest.fixture(scope="session")
     def referenceSavedProject(self, tmp_path_factory) -> AudioProject:
-        tomlPath: Path = tmp_path_factory.mktemp('data') / 'reference.toml'
+        folder = tmp_path_factory.mktemp('data')
+        tomlPath: Path = folder / 'reference.toml'
         with tomlPath.open('wb+') as toml:
             toml.write(self.PROJECT_TOML.encode('utf8'))
+
+        tdoc: tomlkit.TOMLDocument = tomlkit.loads(self.PROJECT_TOML)
+        a = [rec['audioClip'] for rec in tdoc['recordings']]
+        t = [rec['transcript'] for rec in tdoc['recordings']]
+        touchFiles(str(folder), a + t)
 
         audioProject = AudioProject()
         audioProject.name = str(tomlPath.stem)
@@ -87,8 +122,12 @@ class TestAudioProject:
         audioProject = AudioProject()
         assert hasattr(audioProject, 'title')
         assert audioProject.title == ''
+        assert hasattr(audioProject, 'authorName')
+        assert audioProject.authorName == ''
+        assert hasattr(audioProject, 'authorEmail')
+        assert audioProject.authorEmail == ''
         assert hasattr(audioProject, 'author')
-        assert audioProject.author == ''
+        assert audioProject.author == ' <>'
         assert hasattr(audioProject, 'description')
         assert audioProject.description == ''
         assert hasattr(audioProject, 'projectFolder')
@@ -153,15 +192,16 @@ class TestAudioProject:
 
         audioProject.loadProject()
 
-        assert audioProject.author == 'abcdef <abcdef@gmail.com>'
+        assert audioProject.authorName == 'Abcdef'
+        assert audioProject.authorEmail == 'abcdef@gmail.com'
         assert audioProject.description == 'A description of the project'
         assert audioProject.createdOn == datetime.fromisoformat('1979-05-27T00:32:00-07:00')
         assert audioProject.lastSavedOn == datetime.fromisoformat('1979-05-27T00:32:00+07:00')
 
         assert len(audioProject.recordings) == 3
         for i, record in enumerate(audioProject.recordings):
-            assert record.audioClip == f'recording00{i+1}.flac'
-            assert record.transcription == f'recording00{i+1}.txt'
+            assert str(record.audioClip) == f'recording{i+1:03}.flac'
+            assert str(record.transcript) == f'recording{i+1:03}.txt'
 
     # **************************************************************************
     def test_ProjectSaveValidContent(self, referenceUnsavedProject):
@@ -171,20 +211,22 @@ class TestAudioProject:
         with open(referenceUnsavedProject.projectFilename(), 'r') as f:
             tdocLoaded = tomlkit.load(f)
 
-        assert tdocLoaded['general']['author'] == referenceUnsavedProject.author
+        assert tdocLoaded['general']['authorName'] == referenceUnsavedProject.authorName
+        assert tdocLoaded['general']['authorEmail'] == referenceUnsavedProject.authorEmail
         assert tdocLoaded['general']['description'] == referenceUnsavedProject.description
         assert tdocLoaded['general']['createdOn'] == referenceUnsavedProject.createdOn
         assert tdocLoaded['general']['lastSavedOn'] == referenceUnsavedProject.lastSavedOn
 
         assert len(tdocLoaded['recordings']) == len(referenceUnsavedProject.recordings)
         for a, b in zip(tdocLoaded['recordings'], referenceUnsavedProject.recordings):
-            assert a['audioClip'] == b.audioClip
-            assert a['transcription'] == b.transcription
+            assert a['audioClip'] == str(b.audioClip)
+            assert a['transcript'] == str(b.transcript)
 
     # **************************************************************************
     @pytest.mark.parametrize('attribute, value', [
         ('description', 'another description to shed light on the unilluminated'),
-        ('author', 'roximn <roximn@rixir.org>'),
+        ('authorName', 'roximn'),
+        ('authorEmail', 'roximn@rixir.org'),
         ('createdOn', datetime.now(timezone.utc)),
         ('lastSavedOn', datetime.now(timezone.utc)),
     ])
@@ -202,7 +244,10 @@ class TestAudioProject:
         # Prepare saved project with `r` recordings
         prj = referenceUnsavedProject
         prj.recordings.clear()
-        prj.recordings = [Recording(audioClip=f'ac{n}', transcription=f't{n}') for n in range(r)]
+        a = [f'ac{n}' for n in range(r)]
+        t = [f't{n}' for n in range(r)]
+        touchFiles(prj.folder, a + t)
+        prj.recordings = [Recording(audioClip=f'ac{n}', transcript=f't{n}') for n in range(r)]
         prj.saveProject()
 
         # Confirm `r` recordings in toml
@@ -211,7 +256,10 @@ class TestAudioProject:
         assert (r == 0 and 'recordings' not in tdocLoaded) ^ (r != 0 and len(tdocLoaded['recordings']) == r)
 
         # Modify to have `R` recordings
-        prj.recordings = [Recording(audioClip=f'ac{n}', transcription=f't{n}') for n in range(R)]
+        a = [f'ac{n}' for n in range(R)]
+        t = [f't{n}' for n in range(R)]
+        touchFiles(prj.folder, a + t)
+        prj.recordings = [Recording(audioClip=f'ac{n}', transcript=f't{n}') for n in range(R)]
         prj.saveProject()
 
         # Confirm `R` recordings in toml

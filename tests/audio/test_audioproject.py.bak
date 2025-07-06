@@ -7,6 +7,7 @@
 #
 # Author:      RoXimn <roximn@rixir.org>
 # ******************************************************************************
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -18,29 +19,29 @@ from audio.audioproject import AudioProject, AudioProjectException, Recording
 
 
 # ******************************************************************************
-class TestNaveesProject:
+class TestAudioProject:
     PROJECT_TOML = ('# Rekhta Navees audio project file.\n'
                     '\n'
                     'RekhtaNaveesVersion = "0.1"\n'
                     '\n'
                     '[general]\n'
-                    'title = "Lmnop Qrst"\n'
-                    'authorName = "Abcdef"\n'
-                    'authorEmail = "abcdef@gmail.com"\n'
+                    'author = "abcdef <abcdef@gmail.com>"\n'
                     'description = "A description of the project"\n'
                     'createdOn = 1979-05-27T00:32:00-07:00\n'
+                    'lastSavedOn = 1979-05-27T00:32:00+07:00\n'
                     '\n'
                     '[[recordings]]\n'
                     'audioClip = "recording001.flac"\n'
-                    'transcription = "recording001.txt"\n'
+                    'transcript = "recording001.txt"\n'
                     '\n'
                     '[[recordings]]\n'
                     'audioClip = "recording002.flac"\n'
-                    'transcription = "recording002.txt"\n'
+                    'transcript = "recording002.txt"\n'
                     '\n'
                     '[[recordings]]\n'
                     'audioClip = "recording003.flac"\n'
-                    'transcription = "recording003.txt"\n')
+                    'transcript = "recording003.txt"\n')
+
 
     # **************************************************************************
     @pytest.fixture(scope="session")
@@ -48,6 +49,11 @@ class TestNaveesProject:
         tomlPath: Path = tmp_path_factory.mktemp('data') / 'test.toml'
         with tomlPath.open('wb+') as toml:
             toml.write(self.PROJECT_TOML.encode('utf8'))
+
+        tdoc: TOMLDocument = tomlkit.loads(self.PROJECT_TOML)
+        for r in tdoc['recordings']:
+            (tomlPath.parent / Path(r['audioClip'])).touch(exist_ok=True)
+            (tomlPath.parent / Path(r['transcript'])).touch(exist_ok=True)
         return tomlPath
 
     # **************************************************************************
@@ -56,6 +62,7 @@ class TestNaveesProject:
         audioProject = AudioProject()
         audioProject.name = 'unsavedProject'
         audioProject.folder = str(tmpdir_factory.mktemp('test'))
+        os.chdir(audioProject.folder)
 
         tdoc: TOMLDocument = tomlkit.loads(self.PROJECT_TOML)
         audioProject.author = tdoc['general']['author']  # type: ignore
@@ -64,8 +71,10 @@ class TestNaveesProject:
         audioProject.lastSavedOn = tdoc['general']['lastSavedOn']  # type: ignore
 
         for r in tdoc['recordings']:  # type: ignore
+            (Path(audioProject.folder) / Path(r['audioClip'])).touch(exist_ok=True)
+            (Path(audioProject.folder) / Path(r['transcript'])).touch(exist_ok=True)
             audioProject.recordings.append(
-                Recording(audioClip=r['audioClip'], transcription=r['transcription'])  # type: ignore
+                Recording(audioClip=r['audioClip'], transcript=r['transcript'])  # type: ignore
             )
         return audioProject
 
@@ -75,10 +84,15 @@ class TestNaveesProject:
         tomlPath: Path = tmp_path_factory.mktemp('data') / 'reference.toml'
         with tomlPath.open('wb+') as toml:
             toml.write(self.PROJECT_TOML.encode('utf8'))
+        tdoc: TOMLDocument = tomlkit.loads(self.PROJECT_TOML)
+        for r in tdoc['recordings']:
+            (tomlPath.parent / Path(r['audioClip'])).touch(exist_ok=True)
+            (tomlPath.parent / Path(r['transcript'])).touch(exist_ok=True)
 
         audioProject = AudioProject()
         audioProject.name = str(tomlPath.stem)
         audioProject.folder = str(tomlPath.parent)
+
         audioProject.loadProject()
 
         return audioProject
@@ -161,8 +175,8 @@ class TestNaveesProject:
 
         assert len(audioProject.recordings) == 3
         for i, record in enumerate(audioProject.recordings):
-            assert record.audioClip == f'recording00{i+1}.flac'
-            assert record.transcription == f'recording00{i+1}.txt'
+            assert str(record.audioClip) == f'recording{i+1:03}.flac'
+            assert str(record.transcript) == f'recording{i+1:03}.txt'
 
     # **************************************************************************
     def test_ProjectSaveValidContent(self, referenceUnsavedProject):
@@ -179,8 +193,8 @@ class TestNaveesProject:
 
         assert len(tdocLoaded['recordings']) == len(referenceUnsavedProject.recordings)
         for a, b in zip(tdocLoaded['recordings'], referenceUnsavedProject.recordings):
-            assert a['audioClip'] == b.audioClip
-            assert a['transcription'] == b.transcription
+            assert a['audioClip'] == str(b.audioClip)
+            assert a['transcript'] == str(b.transcript)
 
     # **************************************************************************
     @pytest.mark.parametrize('attribute, value', [
@@ -202,8 +216,14 @@ class TestNaveesProject:
     def test_ProjectSaveModifiedRecordings(self, referenceUnsavedProject, R, r):
         # Prepare saved project with `r` recordings
         prj = referenceUnsavedProject
+        os.chdir(prj.folder)
+
         prj.recordings.clear()
-        prj.recordings = [Recording(audioClip=f'ac{n}', transcription=f't{n}') for n in range(r)]
+        acList: list[tuple[str, str]] = [(f'ac{n}', f't{n}') for n in range(r)]
+        for rec in acList:
+            (Path(prj.folder) / Path(rec[0])).touch(exist_ok=True)
+            (Path(prj.folder) / Path(rec[1])).touch(exist_ok=True)
+            prj.recordings.append(Recording(audioClip=rec[0], transcript=rec[1]))
         prj.saveProject()
 
         # Confirm `r` recordings in toml
@@ -212,7 +232,12 @@ class TestNaveesProject:
         assert (r == 0 and 'recordings' not in tdocLoaded) ^ (r != 0 and len(tdocLoaded['recordings']) == r)
 
         # Modify to have `R` recordings
-        prj.recordings = [Recording(audioClip=f'ac{n}', transcription=f't{n}') for n in range(R)]
+        prj.recordings.clear()
+        acList: list[tuple[str, str]] = [(f'ac{n}', f't{n}') for n in range(R)]
+        for rec in acList:
+            (Path(prj.folder) / Path(rec[0])).touch(exist_ok=True)
+            (Path(prj.folder) / Path(rec[1])).touch(exist_ok=True)
+            prj.recordings.append(Recording(audioClip=rec[0], transcript=rec[1]))
         prj.saveProject()
 
         # Confirm `R` recordings in toml
