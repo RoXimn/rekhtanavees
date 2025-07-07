@@ -9,8 +9,8 @@
 # ******************************************************************************
 from typing import Union
 
-from PySide6.QtCore import (QPoint, QRect, QSize, Qt)
-from PySide6.QtGui import (QBrush, QImage, QMouseEvent, QPaintEvent, QPainter, QPalette, QPixmap)
+from PySide6.QtCore import (QSize)
+from PySide6.QtGui import (QImage, QMouseEvent, QPaintEvent, QPainter, QPixmap)
 from PySide6.QtWidgets import (QLabel, QToolTip, QWidget)
 
 from rekhtanavees.audio.audioclip import AudioClip
@@ -60,7 +60,8 @@ class AudioLabel(QLabel):
 
     def mouseMoveEvent(self, ev: QMouseEvent) -> None:
         if 0 <= ev.x() < self.spectrum.width():
-            QToolTip.showText(self.mapToGlobal(ev.position().toPoint()), f'{ev.x() / self.IMAGE_WIDTH_RATE:.2f}s')
+            QToolTip.showText(self.mapToGlobal(ev.position().toPoint()),
+                              f'{ev.x() / self.IMAGE_WIDTH_RATE:.2f}s')
 
     def paintEvent(self, e: QPaintEvent) -> None:
         painter = QPainter(self)

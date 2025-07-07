@@ -12,32 +12,10 @@ from typing import Optional
 import numpy as np
 from PySide6.QtCore import (Qt, QRectF, QPointF, QMargins)
 from PySide6.QtGui import (QImage, QPainter, QBrush, QFont, QTransform, QColor)
-from pydantic import BaseModel
 
 from rekhtanavees.audio.audioclip import AudioClip
+from rekhtanavees.audio.transcript import Word
 from rekhtanavees.audio.spectra import COLOR_MAPS_8BIT
-
-
-# **************************************************************************
-class Word(BaseModel):
-    """A transcribed word"""
-    start: float
-    end: float
-    word: str
-    probability: float
-
-
-# **************************************************************************
-class Segment(BaseModel):
-    """A transcribed segment"""
-    id: int
-    start: float
-    end: float
-    text: str
-    avg_logprob: float
-    compression_ratio: float
-    no_speech_prob: float
-    words: list[Word]
 
 
 # **************************************************************************
@@ -218,6 +196,7 @@ if __name__ == '__main__':
     import orjson as json
     from pathlib import Path
     from PySide6.QtGui import QColor, QGuiApplication
+    from rekhtanavees.audio.transcript import Segment
     app = QGuiApplication()
 
     tms = lambda x: int(x * 1000)

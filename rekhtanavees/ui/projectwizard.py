@@ -11,8 +11,9 @@ from pathlib import Path
 
 from PySide6.QtCore import QStandardPaths
 from PySide6.QtGui import QPixmap
-from PySide6.QtWidgets import (QCheckBox, QFileDialog, QFormLayout, QFrame, QHBoxLayout, QLineEdit, QMessageBox, QPlainTextEdit, QPushButton,
-                               QSizePolicy, QWizard, QWizardPage)
+from PySide6.QtWidgets import (
+    QCheckBox, QFileDialog, QFormLayout, QFrame, QHBoxLayout, QLineEdit,
+    QMessageBox, QPlainTextEdit, QPushButton, QSizePolicy, QWizard, QWizardPage)
 
 from rekhtanavees.settings import RSettings
 from rekhtanavees.audio.audioproject import AudioProject, AudioProjectException
@@ -50,15 +51,20 @@ class RNewProjectPage(QWizardPage):
         self.teProjectName.textChanged.connect(self.onProjectNameChanged)  # type: ignore
         self.teProjectName.setToolTip('Name should only contains ascii alphanumeric characters and space')
 
-        self.teProjectAuthor = QLineEdit()
-        self.teProjectAuthor.textChanged.connect(self.onProjectAuthorChanged)  # type: ignore
-        self.teProjectAuthor.setToolTip('Name <email>')
+        self.teAuthorName = QLineEdit()
+        self.teAuthorName.textChanged.connect(self.onAuthorNameChanged)  # type: ignore
+        self.teAuthorName.setToolTip('Author Name')
+
+        self.teAuthorEmail = QLineEdit()
+        self.teAuthorEmail.textChanged.connect(self.onAuthorEmailChanged)  # type: ignore
+        self.teAuthorEmail.setToolTip('Author Email Address')
 
         self.tbxProjectDescription = QPlainTextEdit()
 
         formLayout = QFormLayout()
-        formLayout.addRow('Name*', self.teProjectName)
-        formLayout.addRow('Author*', self.teProjectAuthor)
+        formLayout.addRow('Title*', self.teProjectName)
+        formLayout.addRow('Author*', self.teAuthorName)
+        formLayout.addRow('Email*', self.teAuthorEmail)
         formLayout.addRow('Description', self.tbxProjectDescription)
 
         hLine = QFrame()
@@ -71,7 +77,8 @@ class RNewProjectPage(QWizardPage):
         self.setLayout(formLayout)
 
         self.registerField('ProjectName*', self.teProjectName)
-        self.registerField('ProjectAuthor*', self.teProjectAuthor)
+        self.registerField('AuthorName*', self.teAuthorName)
+        self.registerField('AuthorEmail*', self.teAuthorEmail)
         self.registerField('ProjectDescription', self.tbxProjectDescription, 'plainText', 'textChanged')  # type: ignore
         self.registerField('BaseDirectory', self.teBaseDirectory)
         self.registerField('SetDefaultBaseDirectory', self.cbxSetDefaultDirectory)
@@ -79,8 +86,11 @@ class RNewProjectPage(QWizardPage):
     def onProjectNameChanged(self):
         self.teProjectName.setStyleSheet('/**/')
 
-    def onProjectAuthorChanged(self):
-        self.teProjectAuthor.setStyleSheet('/**/')
+    def onAuthorNameChanged(self):
+        self.teAuthorName.setStyleSheet('/**/')
+
+    def onAuthorEmailChanged(self):
+        self.teAuthorEmail.setStyleSheet('/**/')
 
     def onGetBaseDirectory(self):
         baseDir = QFileDialog.getExistingDirectory(
@@ -102,11 +112,11 @@ class RNewProjectPage(QWizardPage):
             self.teProjectName.setStyleSheet('/**/')
             isValid = isValid and True
 
-        if self.teProjectAuthor.text() and not self.teProjectAuthor.text().isspace():
-            self.teProjectAuthor.setStyleSheet('/**/')
+        if self.teAuthorName.text() and not self.teAuthorName.text().isspace():
+            self.teAuthorName.setStyleSheet('/**/')
             isValid = isValid and True
         else:
-            self.teProjectAuthor.setStyleSheet('background: LightCoral;')
+            self.teAuthorName.setStyleSheet('background: LightCoral;')
             isValid = isValid and False
 
         # The base directory is always valid

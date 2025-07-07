@@ -166,7 +166,10 @@ class RApplication(QApplication):
     # **************************************************************************
     def onQuit(self):
         """Close application resources (QSettings and log)."""
-        qApp.logger.log(99, f'{Rx.ApplicationName} shutting down' + '\n'*3)
+        qApp.logger.info(f'{Rx.ApplicationName} shutting down')
+        RSettings().save()
+
+        qApp.logger.log(99, '\n'*3)
         logging.shutdown()
 
     # **************************************************************************

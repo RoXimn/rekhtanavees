@@ -61,8 +61,6 @@ class Recording(BaseModel):
     """Filename of the recorded audio clip, path relative to the project file"""
     transcript: FilePath
     """Filename of the transcribed text file, path relative to the project file"""
-    speakerId: PositiveInt | None = None
-    tags: List[str] | None = None
 
 
 # ******************************************************************************

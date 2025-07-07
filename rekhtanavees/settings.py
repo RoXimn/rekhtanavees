@@ -76,6 +76,10 @@ class MainConfig(BaseModel):
         default=[],
         description="List of recent files"
     )
+    AutoSaveInterval: PositiveInt = Field(
+        default=5,
+        description="Interval in minutes for autosave. Default is 5"
+    )
 
 
 # ******************************************************************************

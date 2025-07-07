@@ -24,7 +24,8 @@ from PySide6.QtMultimedia import QMediaPlayer, QMediaDevices, QAudioOutput
 import orjson as json
 
 from audio.audioclip import AudioClip
-from audio.clipimage import Segment, ClipImage
+from audio.clipimage import ClipImage
+from audio.transcript import loadTranscript
 from rekhtanavees.constants import Rx
 from rekhtanavees.settings import RSettings
 from rekhtanavees.ui.mainwindow_ui import Ui_rekhtaNavees
@@ -119,7 +120,7 @@ class MainWindow(QMainWindow):
                     ":/fonts/fonts/NotoSansMono-Condensed-Regular.ttf"]:
             QFontDatabase.addApplicationFont(fnt)
 
-        self.ui.transcript.setFont(QFont(['Mehr Nastaliq Web', 'Noto Naskh Arabic', 'Noto Sans'], 24, QFont.Normal))
+        self.ui.transcript.setFont(QFont(['Noto Naskh Arabic', 'Noto Sans'], 24, QFont.Normal))
 
         fm = QFontMetrics(self.ui.transcript.font())
         h: int = max(fm.height(), 14) + 4
@@ -150,9 +151,13 @@ class MainWindow(QMainWindow):
         self.ui.actionNew.triggered.connect(self.onNew)
         self.ui.actionOpen.triggered.connect(self.onOpen)
         self.ui.actionOpenSource.triggered.connect(self.onOpenSource)
+        self.ui.actionClose.triggered.connect(self.onProjectClose)
         self.ui.actionExit.triggered.connect(self.onExit)
         self.ui.actionAbout.triggered.connect(self.onAbout)
         self.ui.actionAboutQt.triggered.connect(qApp.aboutQt)
+
+        self.autoSaveTimer = QTimer(self)
+        self.autoSaveTimer.timeout.connect(self.onAutoSave)
 
         # Recent files
         self.maxRecentCount = RSettings().Main.RecentMaxCount
@@ -210,8 +215,8 @@ class MainWindow(QMainWindow):
         self.audioPlayer.positionChanged.connect(self.loopBack)
 
         self.ac = AudioClip.createAudioClip(Path(r"D:\tools\urdu-youtube\ertugrul-ghazi\downloads\S1E1-ErtugrulGhaziUrdu.mp4"))
-        j = json.loads(Path(r"D:\tools\urdu-youtube\ertugrul-ghazi\downloads\S1E1-ErtugrulGhaziUrdu-v2.json").read_text(encoding='utf-8'))
-        self.segments = [Segment.model_validate(s) for s in j['segments']]
+        # j = json.loads(Path(r"D:\tools\urdu-youtube\ertugrul-ghazi\downloads\S1E1-ErtugrulGhaziUrdu-v2.json").read_text(encoding='utf-8'))
+        self.segments = loadTranscript(Path(r"D:\tools\urdu-youtube\ertugrul-ghazi\downloads\S1E1-ErtugrulGhaziUrdu-v2.json"))
         self.currentSegment = 0
         self.updateSegment(self.currentSegment)
 
@@ -220,7 +225,7 @@ class MainWindow(QMainWindow):
 
     def updateTranscript(self):
         text = self.ui.transcript.toPlainText()
-        print(f'updating text [{self.currentSegment}: {text}]')
+        print(f'updating text [{self.currentSegment}]: {text}]')
         self.segments[self.currentSegment].text = text
         self.cc.setPlainText(text)
 
@@ -284,7 +289,8 @@ class MainWindow(QMainWindow):
                 audioProject = AudioProject()
                 audioProject.name = wizard.field('ProjectName')
                 audioProject.folder = str(prjDir)
-                audioProject.author = wizard.field('ProjectAuthor')
+                audioProject.authorName = wizard.field('AuthorName')
+                audioProject.authorEmail = wizard.field('AuthorEmail')
                 audioProject.description = wizard.field('ProjectDescription')
                 audioProject.saveProject()
                 qApp.logger.info(f'New project file "{audioProject.projectFilename()}" created')  # type: ignore
@@ -420,6 +426,7 @@ class MainWindow(QMainWindow):
         self.adjustRecentListForCurrent(projectFilename)
 
         self.clearRecordings()
+        self.ui.actionClose.setEnabled(False)
 
         projectFolderPath: Path = projectFilename.parent
         audioProject = AudioProject()
@@ -430,15 +437,34 @@ class MainWindow(QMainWindow):
         self.audioProject = audioProject
         self.ui.lblRecordings.setText(f'Audio Recordings: <b>{self.audioProject.title}</b> [{len(self.audioProject.recordings)}]')
         for recording in self.audioProject.recordings:
-            recordingWidget = RecordingItemWidget(self, projectFolderPath, recording)
-            self.ui.recordingsLayout.addWidget(recordingWidget)
-        verticalSpacer = QSpacerItem(1, 0, QSizePolicy.Minimum, QSizePolicy.Expanding)
-        self.ui.recordingsLayout.insertItem(-1, verticalSpacer)
+        #     recordingWidget = RecordingItemWidget(self, projectFolderPath, recording)
+            self.ui.lsvListing.addItem(str(recording.audioClip))
+            self.ui.lsvListing.addItem(str(recording.transcript))
+        # verticalSpacer = QSpacerItem(1, 0, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        # self.ui.recordingsLayout.insertItem(-1, verticalSpacer)
 
+        self.ui.actionClose.setEnabled(True)
+        self.autoSaveTimer.start(RSettings().Main.AutoSaveInterval * 60 * 1000)
         self.statusBar().showMessage(f'Loaded project {audioProject.name}({audioProject.projectFolder})', 3000)
 
     # **************************************************************************
     def clearRecordings(self):
-        pass
+        self.ui.lsvListing.clear()
+
+
+    # **************************************************************************
+    def onAutoSave(self):
+        qApp.logger.info(f"Autosaving project {self.audioProject.name}({self.audioProject.projectFolder})")
+
+
+    # **************************************************************************
+    def onProjectClose(self):
+        qApp.logger.info(f"Closing project {self.audioProject.name}({self.audioProject.projectFolder})")
+        self.ui.lblRecordings.setText("")
+        self.ui.lsvListing.clear()
+        self.autoSaveTimer.stop()
+        self.statusBar().showMessage(f"AutosaveTimer: {self.autoSaveTimer.isActive()}", 5000)
+        self.ui.actionClose.setEnabled(False)
+
 
 # ******************************************************************************
