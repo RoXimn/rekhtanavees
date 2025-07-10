@@ -46,16 +46,16 @@ class TestNaveesProject:
                     'lastSavedOn = 1979-05-27T00:32:00+07:00\n'
                     '\n'
                     '[[recordings]]\n'
-                    'audioClip = "recording001.flac"\n'
-                    'transcript = "recording001.txt"\n'
+                    'audioFile = "recording001.flac"\n'
+                    'transcriptFile = "recording001.txt"\n'
                     '\n'
                     '[[recordings]]\n'
-                    'audioClip = "recording002.flac"\n'
-                    'transcript = "recording002.txt"\n'
+                    'audioFile = "recording002.flac"\n'
+                    'transcriptFile = "recording002.txt"\n'
                     '\n'
                     '[[recordings]]\n'
-                    'audioClip = "recording003.flac"\n'
-                    'transcript = "recording003.txt"\n')
+                    'audioFile = "recording003.flac"\n'
+                    'transcriptFile = "recording003.txt"\n')
 
     # **************************************************************************
     @pytest.fixture(scope="session")
@@ -66,8 +66,8 @@ class TestNaveesProject:
             toml.write(self.PROJECT_TOML.encode('utf8'))
 
         tdoc: tomlkit.TOMLDocument = tomlkit.loads(self.PROJECT_TOML)
-        a = [rec['audioClip'] for rec in tdoc['recordings']]
-        t = [rec['transcript'] for rec in tdoc['recordings']]
+        a = [rec['audioFile'] for rec in tdoc['recordings']]
+        t = [rec['transcriptFile'] for rec in tdoc['recordings']]
         touchFiles(str(folder), a + t)
 
         return tomlPath
@@ -86,14 +86,14 @@ class TestNaveesProject:
         audioProject.createdOn = tdoc['general']['createdOn']
         audioProject.lastSavedOn = tdoc['general']['lastSavedOn']
 
-        a = [rec['audioClip'] for rec in tdoc['recordings']]
-        t = [rec['transcript'] for rec in tdoc['recordings']]
+        a = [rec['audioFile'] for rec in tdoc['recordings']]
+        t = [rec['transcriptFile'] for rec in tdoc['recordings']]
         touchFiles(audioProject.folder, a + t)
 
         os.chdir(audioProject.folder)
         for r in tdoc['recordings']:
             audioProject.recordings.append(
-                Recording(audioClip=r['audioClip'], transcript=r['transcript'])
+                Recording(audioFile=r['audioFile'], transcriptFile=r['transcriptFile'])
             )
         return audioProject
 
@@ -106,8 +106,8 @@ class TestNaveesProject:
             toml.write(self.PROJECT_TOML.encode('utf8'))
 
         tdoc: tomlkit.TOMLDocument = tomlkit.loads(self.PROJECT_TOML)
-        a = [rec['audioClip'] for rec in tdoc['recordings']]
-        t = [rec['transcript'] for rec in tdoc['recordings']]
+        a = [rec['audioFile'] for rec in tdoc['recordings']]
+        t = [rec['transcriptFile'] for rec in tdoc['recordings']]
         touchFiles(str(folder), a + t)
 
         audioProject = AudioProject()
@@ -200,8 +200,8 @@ class TestNaveesProject:
 
         assert len(audioProject.recordings) == 3
         for i, record in enumerate(audioProject.recordings):
-            assert str(record.audioClip) == f'recording{i+1:03}.flac'
-            assert str(record.transcript) == f'recording{i+1:03}.txt'
+            assert str(record.audioFile) == f'recording{i + 1:03}.flac'
+            assert str(record.transcriptFile) == f'recording{i + 1:03}.txt'
 
     # **************************************************************************
     def test_ProjectSaveValidContent(self, referenceUnsavedProject):
@@ -219,8 +219,8 @@ class TestNaveesProject:
 
         assert len(tdocLoaded['recordings']) == len(referenceUnsavedProject.recordings)
         for a, b in zip(tdocLoaded['recordings'], referenceUnsavedProject.recordings):
-            assert a['audioClip'] == str(b.audioClip)
-            assert a['transcript'] == str(b.transcript)
+            assert a['audioFile'] == str(b.audioFile)
+            assert a['transcriptFile'] == str(b.transcriptFile)
 
     # **************************************************************************
     @pytest.mark.parametrize('attribute, value', [
@@ -247,7 +247,7 @@ class TestNaveesProject:
         a = [f'ac{n}' for n in range(r)]
         t = [f't{n}' for n in range(r)]
         touchFiles(prj.folder, a + t)
-        prj.recordings = [Recording(audioClip=f'ac{n}', transcript=f't{n}') for n in range(r)]
+        prj.recordings = [Recording(audioFile=f'ac{n}', transcriptFile=f't{n}') for n in range(r)]
         prj.saveProject()
 
         # Confirm `r` recordings in toml
@@ -259,7 +259,7 @@ class TestNaveesProject:
         a = [f'ac{n}' for n in range(R)]
         t = [f't{n}' for n in range(R)]
         touchFiles(prj.folder, a + t)
-        prj.recordings = [Recording(audioClip=f'ac{n}', transcript=f't{n}') for n in range(R)]
+        prj.recordings = [Recording(audioFile=f'ac{n}', transcriptFile=f't{n}') for n in range(R)]
         prj.saveProject()
 
         # Confirm `R` recordings in toml

@@ -14,13 +14,13 @@ from enum import auto
 from pathlib import Path
 from typing import Optional, List, Annotated
 
-from strenum import StrEnum
 import tomlkit
-from tomlkit.exceptions import TOMLKitError
 from pydantic import (
     BaseModel, Field, EmailStr, FilePath, ValidationError,
-    PositiveInt, StringConstraints
+    StringConstraints
 )
+from strenum import StrEnum
+from tomlkit.exceptions import TOMLKitError
 
 from rekhtanavees.constants import Rx
 from rekhtanavees.misc.utils import isValidProjectName, slugify
@@ -57,9 +57,9 @@ class Speaker(BaseModel):
 
 # ******************************************************************************
 class Recording(BaseModel):
-    audioClip: FilePath
+    audioFile: FilePath
     """Filename of the recorded audio clip, path relative to the project file"""
-    transcript: FilePath
+    transcriptFile: FilePath
     """Filename of the transcribed text file, path relative to the project file"""
 
 
@@ -160,7 +160,7 @@ def loadProject(filename: str) -> NaveesProject:
         raise AudioProjectException(f'{e!s} in {filename}')
 
     try:
-        info = ProjectInfo.parse_obj(tdoc['general'])
+        info = ProjectInfo.model_validate(tdoc['general'])
     except ValidationError as ve:
         raise AudioProjectException(str(ve))
 
@@ -174,7 +174,7 @@ def loadProject(filename: str) -> NaveesProject:
             try:
                 print(record)
                 print(record.as_string)
-                clips.append(Recording.parse_obj(record))
+                clips.append(Recording.model_validate(record))
             except ValidationError as ve:
                 raise AudioProjectException(f'Error at {i}: {str(ve)}')
 
@@ -361,10 +361,10 @@ class AudioProject:
 
         if 'recordings' in tdoc:
             for i, record in enumerate(tdoc['recordings']):  # type: ignore
-                assert 'audioClip' in record, f'"audioClip" key is absent in recording #{i}'
-                assert 'transcript' in record, f'"transcript" key is absent in recording #{i}'
-                recording = Recording(audioClip=Path(record['audioClip']),
-                                      transcript=Path(record['transcript']))
+                assert 'audioFile' in record, f'"audioFile" key is absent in recording #{i}'
+                assert 'transcriptFile' in record, f'"transcriptFile" key is absent in recording #{i}'
+                recording = Recording(audioFile=Path(record['audioFile']),
+                                      transcriptFile=Path(record['transcriptFile']))
 
                 self.recordings.append(recording)
 
@@ -401,8 +401,8 @@ class AudioProject:
         for i, record in enumerate(self.recordings):
             recordings.append(
                 tomlkit.table()
-                .add('audioClip', str(record.audioClip))
-                .add('transcript', str(record.transcript))
+                .add('audioFile', str(record.audioFile))
+                .add('transcriptFile', str(record.transcriptFile))
             )
         tdoc.add('recordings', recordings)
         tdoc.add(tomlkit.nl()).add(tomlkit.comment("*" * 78))
@@ -433,15 +433,15 @@ class AudioProject:
         recordingsToUpdate = self.recordings[:(r if hasMore else R)]
         for i, record in enumerate(recordingsToUpdate):
             recordings[i].update({
-                'audioClip': str(record.audioClip),
-                'transcript': str(record.transcript)
+                'audioFile': str(record.audioFile),
+                'transcriptFile': str(record.transcriptFile)
             })
         if hasMore:
             for i, record in enumerate(self.recordings[r:]):
                 recordings.append(
                     tomlkit.table()
-                    .add('audioClip', str(record.audioClip))
-                    .add('transcript', str(record.transcript))
+                    .add('audioFile', str(record.audioFile))
+                    .add('transcriptFile', str(record.transcriptFile))
                 )
         else:
             del recordings[R:]
@@ -455,7 +455,7 @@ if __name__ == '__main__':
     print(p.model_dump())
     os.chdir(f.parent)
     for i in range(1, 4):
-        r = Recording(audioClip=f'rec{i}.wav', transcript=f'txt{i}.txt')
+        r = Recording(audioFile=f'rec{i}.wav', transcriptFile=f'txt{i}.txt')
         p.clips.append(r)
     print(p.model_dump())
     p.save()

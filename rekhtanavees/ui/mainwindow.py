@@ -438,8 +438,8 @@ class MainWindow(QMainWindow):
         self.ui.lblRecordings.setText(f'Audio Recordings: <b>{self.audioProject.title}</b> [{len(self.audioProject.recordings)}]')
         for recording in self.audioProject.recordings:
         #     recordingWidget = RecordingItemWidget(self, projectFolderPath, recording)
-            self.ui.lsvListing.addItem(str(recording.audioClip))
-            self.ui.lsvListing.addItem(str(recording.transcript))
+            self.ui.lsvListing.addItem(str(recording.audioFile))
+            self.ui.lsvListing.addItem(str(recording.transcriptFile))
         # verticalSpacer = QSpacerItem(1, 0, QSizePolicy.Minimum, QSizePolicy.Expanding)
         # self.ui.recordingsLayout.insertItem(-1, verticalSpacer)
 

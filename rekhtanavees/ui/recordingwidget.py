@@ -125,7 +125,7 @@ class RecordingItemWidget(QWidget):
         self.filePath = filePath
         self.recording = recording
 
-        audioClip = self.filePath / recording.audioClip
+        audioClip = self.filePath / recording.audioFile
         fileSize = 0
         hasAudio = audioClip.exists()
         if hasAudio:
@@ -139,7 +139,7 @@ class RecordingItemWidget(QWidget):
         self.ui.btnSave.setEnabled(hasAudio)
         self.ui.textEdit.setEnabled(hasAudio)
 
-        self.ui.groupBox.setTitle(f'{recording.audioClip} ({humanize.naturalsize(fileSize)})')
+        self.ui.groupBox.setTitle(f'{recording.audioFile} ({humanize.naturalsize(fileSize)})')
         fnt = QFont(['Noto Naskh Arabic', 'Noto Sans'], 14)
         self.ui.textEdit.setFont(fnt)
         fm = QFontMetrics(fnt)
@@ -160,7 +160,7 @@ class RecordingItemWidget(QWidget):
     # **************************************************************************
     def playAudio(self):
         self.audioOutput.setVolume(100)
-        self.player.setSource(QUrl.fromLocalFile(self.filePath / self.recording.audioClip))
+        self.player.setSource(QUrl.fromLocalFile(self.filePath / self.recording.audioFile))
         self.player.play()
 
     # **************************************************************************
