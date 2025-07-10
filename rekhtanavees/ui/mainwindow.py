@@ -7,6 +7,7 @@
 #
 # Author:      RoXimn <roximn@rixir.org>
 # ******************************************************************************
+import json
 import re
 from pathlib import Path
 from typing import List
@@ -14,25 +15,21 @@ from typing import List
 from PySide6.QtCore import QUrl, Qt, QTimer, QPoint, QEvent, QSize
 from PySide6.QtGui import QAction, QIcon, QPixmap, QKeyEvent, QPainter, QBrush, QColor, QResizeEvent, QFont, \
     QTextOption, QFontMetrics, QFontDatabase, QSyntaxHighlighter, QTextCharFormat
+from PySide6.QtMultimedia import QMediaPlayer, QMediaDevices, QAudioOutput
 from PySide6.QtMultimediaWidgets import QGraphicsVideoItem
 from PySide6.QtWidgets import (
-    QMainWindow, QMessageBox, QSizePolicy, QSpacerItem, QWidget,
-    QGraphicsScene, QGraphicsSimpleTextItem, QGraphicsTextItem, QStyleOption, QStyle, QApplication
+    QMainWindow, QMessageBox, QWidget,
+    QGraphicsScene, QGraphicsTextItem, QStyleOption, QStyle
 )
-from PySide6.QtMultimedia import QMediaPlayer, QMediaDevices, QAudioOutput
-# import fitz
-import orjson as json
 
 from audio.audioclip import AudioClip
 from audio.clipimage import ClipImage
-from audio.transcript import loadTranscript
+from audio.transcript import loadTranscript, saveTranscript
+from rekhtanavees.audio.audioproject import AudioProject, AudioProjectException
 from rekhtanavees.constants import Rx
 from rekhtanavees.settings import RSettings
 from rekhtanavees.ui.mainwindow_ui import Ui_rekhtaNavees
-from rekhtanavees.ui.imageviewer import ImageViewer
 from rekhtanavees.ui.projectwizard import RProjectWizard
-from rekhtanavees.ui.recordingwidget import RecordingItemWidget
-from rekhtanavees.audio.audioproject import AudioProject
 from rekhtanavees.ui.recordingwidget_ui import Ui_recordingWidget
 
 
@@ -96,6 +93,7 @@ class OverlayLabel(QWidget):
 class MainWindow(QMainWindow):
     """Application MainWindow class"""
 
+    # **************************************************************************
     def eventFilter(self, watched, event):
         if watched is self.ui.videoView and isinstance(event, QResizeEvent):
             # print(watched, event)
@@ -150,6 +148,7 @@ class MainWindow(QMainWindow):
 
         self.ui.actionNew.triggered.connect(self.onNew)
         self.ui.actionOpen.triggered.connect(self.onOpen)
+        self.ui.actionSave.triggered.connect(self.onSave)
         self.ui.actionOpenSource.triggered.connect(self.onOpenSource)
         self.ui.actionClose.triggered.connect(self.onProjectClose)
         self.ui.actionExit.triggered.connect(self.onExit)
@@ -179,10 +178,8 @@ class MainWindow(QMainWindow):
 
         self.updateRecentFileList()
 
-        # self.ui.transcriptionSource = ImageViewer(self)
-        # self.ui.splitter.insertWidget(0, self.ui.transcriptionSource)
-
         self.audioProject = None
+        self.audioRecordings = []
 
         self.scene = QGraphicsScene()
 
@@ -210,46 +207,52 @@ class MainWindow(QMainWindow):
 
         self.audioOutput = QAudioOutput(QMediaDevices.defaultAudioOutput())
         self.audioPlayer = QMediaPlayer()
-        self.audioPlayer.setSource(QUrl("file:///D:/tools/urdu-youtube/ertugrul-ghazi/downloads/S1E1-ErtugrulGhaziUrdu.mp4"))
+        # self.audioPlayer.setSource(QUrl("file:///D:/tools/urdu-youtube/ertugrul-ghazi/downloads/S1E1-ErtugrulGhaziUrdu.mp4"))
         self.audioPlayer.setAudioOutput(self.audioOutput)
         self.audioPlayer.positionChanged.connect(self.loopBack)
 
-        self.ac = AudioClip.createAudioClip(Path(r"D:\tools\urdu-youtube\ertugrul-ghazi\downloads\S1E1-ErtugrulGhaziUrdu.mp4"))
-        # j = json.loads(Path(r"D:\tools\urdu-youtube\ertugrul-ghazi\downloads\S1E1-ErtugrulGhaziUrdu-v2.json").read_text(encoding='utf-8'))
-        self.segments = loadTranscript(Path(r"D:\tools\urdu-youtube\ertugrul-ghazi\downloads\S1E1-ErtugrulGhaziUrdu-v2.json"))
-        self.currentSegment = 0
-        self.updateSegment(self.currentSegment)
+        self.currentRecording: int = 0
+        """Current recording  index.
+        
+        This index will be used to keep track of the current recording used for processing"""
+
+        self.currentSegment: int = 0
+        """
+        Current transcript segment index.
+        
+        This segment will be used to keep track of the currently playing or displayed segment in the application.
+        Initialized to 0.
+        """
 
         self.ui.transcript.textChanged.connect(self.updateTranscript)
         self.ui.videoView.installEventFilter(self)
 
+    # **************************************************************************
     def updateTranscript(self):
         text = self.ui.transcript.toPlainText()
-        print(f'updating text [{self.currentSegment}]: {text}]')
-        self.segments[self.currentSegment].text = text
+        self.audioRecordings[self.currentRecording][1][self.currentSegment].text = text
         self.cc.setPlainText(text)
 
+    # **************************************************************************
     def keyPressEvent(self, e: QKeyEvent):
         focus: QWidget = self.focusWidget()
         if focus is self:
             if e.key() == Qt.Key_Space:
                 self.onTogglePlay()
             elif e.key() == Qt.Key_Right:
-                self.updateSegment(self.currentSegment + 1)
+                self.updateSegment(self.currentRecording, self.currentSegment + 1)
             elif e.key() == Qt.Key_Left:
-                self.updateSegment(self.currentSegment - 1)
+                self.updateSegment(self.currentRecording, self.currentSegment - 1)
             elif e.key() in (Qt.Key_Return, Qt.Key_Enter):
                 self.ui.transcript.setFocus()
         elif focus is self.ui.transcript:
             if e.key() in (Qt.Key_Escape, Qt.Key_Return, Qt.Key_Enter):
-                print('Setting focus to main window...')
                 self.setFocus()
         else:
             super(MainWindow, self).keyPressEvent(e)
 
     # **************************************************************************
     def onTogglePlay(self):
-        print("Toggle play...")
         if self.audioPlayer.playbackState() == QMediaPlayer.PlayingState:
             self.pauseSegment()
         else:
@@ -260,19 +263,20 @@ class MainWindow(QMainWindow):
         self.ui.playSlider.setMaximum(duration)
 
     # **************************************************************************
-    def updateSegment(self, i: int):
-        self.currentSegment = max(min(len(self.segments) - 1, i), 0)
-        s = self.segments[self.currentSegment]
-        ci = ClipImage(self.ac, widthPerSec=256, height=96, direction=Qt.LayoutDirection.RightToLeft, cmap='viridis')
-        img = ci.renderWords(image=ci.renderSpectrum(startTime=tms(s.start - 1),
-                                                     endTime=tms(s.end + 1)),
-                             label=f'#{s.id}', words=s.words)
+    def updateSegment(self, rec: int, i: int):
+        segments = self.audioRecordings[rec][1]
+        self.currentSegment = max(min(len(segments) - 1, i), 0)
 
-        self.ui.lblSegment.setText(f'{self.currentSegment+1:03}/{len(self.segments)}')
-        self.ui.lblSpectrum.setPixmap(QPixmap(img))
-        # self.ui.transcript.document().blockSignals(True)
-        self.ui.transcript.setPlainText(s.text)
-        # self.ui.transcript.document().blockSignals(False)
+        if segments:
+            s = segments[self.currentSegment]
+            ci = ClipImage(self.audioRecordings[rec][0], widthPerSec=256, height=96, direction=Qt.LayoutDirection.RightToLeft, cmap='viridis')
+            img = ci.renderWords(image=ci.renderSpectrum(startTime=tms(s.start - 1),
+                                                         endTime=tms(s.end + 1)),
+                                 label=f'#{s.id}', words=s.words)
+
+            self.ui.lblSpectrum.setPixmap(QPixmap(img))
+            self.ui.transcript.setPlainText(s.text)
+            self.ui.lblSegment.setText(f'{self.currentSegment+1:03}/{len(segments)}')
 
     # **************************************************************************
     def onNew(self) -> None:
@@ -312,7 +316,7 @@ class MainWindow(QMainWindow):
 
     # **************************************************************************
     def playSegment(self):
-        s = self.segments[self.currentSegment]
+        s = self.audioRecordings[self.currentRecording][1][self.currentSegment]
         self.audioPlayer.setPosition(tms(s.start))
         self.videoPlayer.setPosition(tms(s.start))
         self.audioPlayer.play()
@@ -326,11 +330,12 @@ class MainWindow(QMainWindow):
     # **************************************************************************
     def loopBack(self, pos):
         self.ui.playSlider.setValue(pos)
-        if pos > tms(self.segments[self.currentSegment].end):
+        segment = self.audioRecordings[self.currentRecording][1]
+        if pos > tms(segment.end):
             print('Looping back...')
             self.pauseSegment()
             QTimer.singleShot(1000, self.playSegment)
-        elif pos < tms(self.segments[self.currentSegment].start):
+        elif pos < tms(segment.start):
             self.playSegment()
 
     # **************************************************************************
@@ -428,34 +433,71 @@ class MainWindow(QMainWindow):
         self.clearRecordings()
         self.ui.actionClose.setEnabled(False)
 
-        projectFolderPath: Path = projectFilename.parent
-        audioProject = AudioProject()
-        audioProject.projectFolder = str(projectFolderPath)
+        projectFolder: Path = projectFilename.parent
+        try:
+            audioProject = AudioProject()
+        except AudioProjectException as ae:
+            qApp.logger.error(str(ae))
+            return
+
+        audioProject.projectFolder = str(projectFolder)
         audioProject.title = projectFilename.stem
         audioProject.loadProject()
 
         self.audioProject = audioProject
         self.ui.lblRecordings.setText(f'Audio Recordings: <b>{self.audioProject.title}</b> [{len(self.audioProject.recordings)}]')
+
         for recording in self.audioProject.recordings:
         #     recordingWidget = RecordingItemWidget(self, projectFolderPath, recording)
             self.ui.lsvListing.addItem(str(recording.audioFile))
             self.ui.lsvListing.addItem(str(recording.transcriptFile))
+            self.audioRecordings.append((
+                AudioClip.createAudioClip(projectFolder / recording.audioFile),
+                loadTranscript(projectFolder / recording.transcriptFile)
+            ))
         # verticalSpacer = QSpacerItem(1, 0, QSizePolicy.Minimum, QSizePolicy.Expanding)
         # self.ui.recordingsLayout.insertItem(-1, verticalSpacer)
+
+        self.currentRecording = 0
+        self.currentSegment = 0
+        self.updateSegment(self.currentRecording, self.currentSegment)
 
         self.ui.actionClose.setEnabled(True)
         self.autoSaveTimer.start(RSettings().Main.AutoSaveInterval * 60 * 1000)
         self.statusBar().showMessage(f'Loaded project {audioProject.name}({audioProject.projectFolder})', 3000)
 
+        self.setFocus()
+
+
+    # **************************************************************************
+    def saveRecordings(self):
+        if not self.audioRecordings:
+            return
+
+        qApp.logger.info(f'Saving recordings...')
+        audioProject = self.audioProject
+
+        for i, (audioClip, transcript) in enumerate(self.audioRecordings):
+            transcriptFile = audioProject.projectFolder / audioProject.recordings[i].transcriptFile
+            qApp.logger.info(f'Saving {transcriptFile.resolve()}')
+
+            # Save the transcript file
+            saveTranscript(transcriptFile, transcript)
+
+        self.statusBar().showMessage(f'Saved project {audioProject.name}({audioProject.projectFolder})', 3000)
+
     # **************************************************************************
     def clearRecordings(self):
         self.ui.lsvListing.clear()
 
-
     # **************************************************************************
     def onAutoSave(self):
         qApp.logger.info(f"Autosaving project {self.audioProject.name}({self.audioProject.projectFolder})")
+        self.onSave()
 
+    # **************************************************************************
+    def onSave(self):
+        self.saveRecordings()
 
     # **************************************************************************
     def onProjectClose(self):

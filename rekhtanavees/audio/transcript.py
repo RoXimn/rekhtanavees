@@ -59,11 +59,14 @@ def loadTranscript(transcriptFile: Path) -> list[Segment]:
 
 # ******************************************************************************
 def saveTranscript(transcriptFile: Path, segments: list[Segment]) -> None:
-    """"""
+    """Save the list of transcription Segments as JSON file"""
     assert isinstance(transcriptFile, Path)
     assert isinstance(segments, list)
 
-    transcriptFile.write_text(json.dumps([s.model_dump() for s in segments]), encoding='utf-8')
+    transcriptFile.write_text(json.dumps([s.model_dump() for s in segments],
+                                         ensure_ascii=False,
+                                         indent=2),
+                              encoding='utf-8')
 
 # ******************************************************************************
 if __name__ == '__main__':

@@ -48,7 +48,7 @@
       </property>
       <widget class="QTabWidget" name="tabRecordings">
        <property name="currentIndex">
-        <number>1</number>
+        <number>0</number>
        </property>
        <widget class="QWidget" name="tabAV">
         <attribute name="title">
@@ -318,6 +318,7 @@ selection-background-color: darkgray;
     </widget>
     <addaction name="actionNew"/>
     <addaction name="actionOpen"/>
+    <addaction name="actionSave"/>
     <addaction name="actionOpenSource"/>
     <addaction name="menuRecent"/>
     <addaction name="separator"/>
@@ -496,6 +497,18 @@ selection-background-color: darkgray;
    </property>
    <property name="text">
     <string>&amp;Close</string>
+   </property>
+  </action>
+  <action name="actionSave">
+   <property name="icon">
+    <iconset resource="mainwindow.qrc">
+     <normaloff>:/images/icons/document-save.png</normaloff>:/images/icons/document-save.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Save</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
    </property>
   </action>
  </widget>

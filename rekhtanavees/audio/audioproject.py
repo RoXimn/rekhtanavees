@@ -126,9 +126,7 @@ class NaveesProject(BaseModel):
             tdoc: tomlkit.TOMLDocument = tomlkit.loads(self.projectFile.read_text(encoding='utf-8'))
         except TOMLKitError as e:
             log.warning(f'Error decoding {self.projectFile!s}: {e!s}')
-            print(f'Error decoding {self.projectFile!s}: {e!s}')
             log.debug('Resetting the toml document...')
-            print('Resetting the toml document...')
             tdoc = createProjectToml()
 
         tdoc['general'] = tomlkit.item(self.info.model_dump(exclude_none=True))
@@ -137,9 +135,7 @@ class NaveesProject(BaseModel):
         recordings = tdoc['recordings'] if 'recordings' in tdoc else tomlkit.aot()
         for _, clip in enumerate(self.clips):
             c = clip.model_dump(exclude_none=True)
-            print(c)
             i = tomlkit.item(c)
-            print(type(recordings))
             recordings.append(i)
         tdoc['recordings'] = recordings
 
@@ -148,6 +144,7 @@ class NaveesProject(BaseModel):
         log.debug(f'Project file saved. ({self.projectFile.resolve()!s})')
 
 
+# ******************************************************************************
 def loadProject(filename: str) -> NaveesProject:
     assert isinstance(filename, str)
     filePath = Path(filename)
@@ -172,8 +169,6 @@ def loadProject(filename: str) -> NaveesProject:
 
         for i, record in enumerate(tdoc['recordings']):
             try:
-                print(record)
-                print(record.as_string)
                 clips.append(Recording.model_validate(record))
             except ValidationError as ve:
                 raise AudioProjectException(f'Error at {i}: {str(ve)}')
@@ -331,7 +326,7 @@ class AudioProject:
                 tdoc = self.renderProjectToToml()
 
         # update last saved time
-        tdoc['general']['lastSavedOn']: datetime.now(tz=timezone.utc)  # type: ignore
+        tdoc['general']['lastSavedOn']: datetime.now(tz=timezone.utc)
         try:
             with projectFilePath.open(mode='wb+') as tomlFile:
                 tomlFile.write(tomlkit.dumps(tdoc).encode('utf-8'))
