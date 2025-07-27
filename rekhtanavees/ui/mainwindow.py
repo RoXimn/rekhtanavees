@@ -7,14 +7,16 @@
 #
 # Author:      RoXimn <roximn@rixir.org>
 # ******************************************************************************
-import json
 import re
 from pathlib import Path
 from typing import List
 
 from PySide6.QtCore import QUrl, Qt, QTimer, QPoint, QEvent, QSize
-from PySide6.QtGui import QAction, QIcon, QPixmap, QKeyEvent, QPainter, QBrush, QColor, QResizeEvent, QFont, \
-    QTextOption, QFontMetrics, QFontDatabase, QSyntaxHighlighter, QTextCharFormat
+from PySide6.QtGui import (
+    QAction, QIcon, QPixmap, QKeyEvent, QPainter, QBrush,
+    QColor, QResizeEvent, QFont, QTextOption, QFontMetrics, QFontDatabase,
+    QSyntaxHighlighter, QTextCharFormat
+)
 from PySide6.QtMultimedia import QMediaPlayer, QMediaDevices, QAudioOutput
 from PySide6.QtMultimediaWidgets import QGraphicsVideoItem
 from PySide6.QtWidgets import (
@@ -22,9 +24,9 @@ from PySide6.QtWidgets import (
     QGraphicsScene, QGraphicsTextItem, QStyleOption, QStyle
 )
 
-from audio.audioclip import AudioClip
-from audio.clipimage import ClipImage
-from audio.transcript import loadTranscript, saveTranscript
+from rekhtanavees.audio.audioclip import AudioClip
+from rekhtanavees.audio.clipimage import ClipImage
+from rekhtanavees.audio.transcript import loadTranscript, saveTranscript
 from rekhtanavees.audio.audioproject import AudioProject, AudioProjectException
 from rekhtanavees.constants import Rx
 from rekhtanavees.settings import RSettings
@@ -207,7 +209,6 @@ class MainWindow(QMainWindow):
 
         self.audioOutput = QAudioOutput(QMediaDevices.defaultAudioOutput())
         self.audioPlayer = QMediaPlayer()
-        # self.audioPlayer.setSource(QUrl("file:///D:/tools/urdu-youtube/ertugrul-ghazi/downloads/S1E1-ErtugrulGhaziUrdu.mp4"))
         self.audioPlayer.setAudioOutput(self.audioOutput)
         self.audioPlayer.positionChanged.connect(self.loopBack)
 
@@ -330,7 +331,7 @@ class MainWindow(QMainWindow):
     # **************************************************************************
     def loopBack(self, pos):
         self.ui.playSlider.setValue(pos)
-        segment = self.audioRecordings[self.currentRecording][1]
+        segment = self.audioRecordings[self.currentRecording][1][self.currentSegment]
         if pos > tms(segment.end):
             print('Looping back...')
             self.pauseSegment()
@@ -444,21 +445,18 @@ class MainWindow(QMainWindow):
         audioProject.title = projectFilename.stem
         audioProject.loadProject()
 
+        for recording in audioProject.recordings:
+            ac = AudioClip.createAudioClip(projectFolder / recording.audioFile)
+            ts = loadTranscript(projectFolder / recording.transcriptFile)
+            self.audioRecordings.append((ac, ts))
+
         self.audioProject = audioProject
         self.ui.lblRecordings.setText(f'Audio Recordings: <b>{self.audioProject.title}</b> [{len(self.audioProject.recordings)}]')
-
-        for recording in self.audioProject.recordings:
-        #     recordingWidget = RecordingItemWidget(self, projectFolderPath, recording)
-            self.ui.lsvListing.addItem(str(recording.audioFile))
-            self.ui.lsvListing.addItem(str(recording.transcriptFile))
-            self.audioRecordings.append((
-                AudioClip.createAudioClip(projectFolder / recording.audioFile),
-                loadTranscript(projectFolder / recording.transcriptFile)
-            ))
-        # verticalSpacer = QSpacerItem(1, 0, QSizePolicy.Minimum, QSizePolicy.Expanding)
-        # self.ui.recordingsLayout.insertItem(-1, verticalSpacer)
-
+        for recording in self.audioRecordings:
+            self.ui.lsvListing.addItem(str(recording[0]))
+            self.ui.lsvListing.addItem(str(recording[1]))
         self.currentRecording = 0
+        self.audioPlayer.setSource(QUrl.fromLocalFile(projectFolder / audioProject.recordings[self.currentRecording].audioFile))
         self.currentSegment = 0
         self.updateSegment(self.currentRecording, self.currentSegment)
 
@@ -471,7 +469,7 @@ class MainWindow(QMainWindow):
 
     # **************************************************************************
     def saveRecordings(self):
-        if not self.audioRecordings:
+        if self.audioProject is None or not self.audioRecordings:
             return
 
         qApp.logger.info(f'Saving recordings...')
