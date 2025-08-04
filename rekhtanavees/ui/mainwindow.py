@@ -21,12 +21,11 @@ from PySide6.QtMultimedia import QMediaPlayer, QMediaDevices, QAudioOutput
 from PySide6.QtMultimediaWidgets import QGraphicsVideoItem
 from PySide6.QtWidgets import (
     QMainWindow, QMessageBox, QWidget,
-    QGraphicsScene, QGraphicsTextItem, QStyleOption, QStyle
+    QGraphicsScene, QGraphicsTextItem, QStyleOption, QStyle, QTableWidgetItem
 )
 
-from rekhtanavees.audio.audioclip import AudioClip
-from rekhtanavees.audio.clipimage import ClipImage
-from rekhtanavees.audio.transcript import loadTranscript, saveTranscript
+from rekhtanavees.misc.utils import hmsTimestamp
+from rekhtanavees.audio import AudioClip, AudioRenderer, loadTranscript, saveTranscript, writeSrtFile
 from rekhtanavees.audio.audioproject import AudioProject, AudioProjectException
 from rekhtanavees.constants import Rx
 from rekhtanavees.settings import RSettings
@@ -270,10 +269,10 @@ class MainWindow(QMainWindow):
 
         if segments:
             s = segments[self.currentSegment]
-            ci = ClipImage(self.audioRecordings[rec][0], widthPerSec=256, height=96, direction=Qt.LayoutDirection.RightToLeft, cmap='viridis')
-            img = ci.renderWords(image=ci.renderSpectrum(startTime=tms(s.start - 1),
-                                                         endTime=tms(s.end + 1)),
-                                 label=f'#{s.id}', words=s.words)
+            ar = AudioRenderer(self.audioRecordings[rec][0], widthPerSec=256, height=96,
+                               direction=Qt.LayoutDirection.RightToLeft, cmap='viridis')
+            img = ar.renderSpectrum(startTime=tms(s.start - 1), endTime=tms(s.end + 1))
+            img = ar.renderWords(image=img, label=f'#{s.id}', segment=s)
 
             self.ui.lblSpectrum.setPixmap(QPixmap(img))
             self.ui.transcript.setPlainText(s.text)
@@ -453,8 +452,13 @@ class MainWindow(QMainWindow):
         self.audioProject = audioProject
         self.ui.lblRecordings.setText(f'Audio Recordings: <b>{self.audioProject.title}</b> [{len(self.audioProject.recordings)}]')
         for recording in self.audioRecordings:
-            self.ui.lsvListing.addItem(str(recording[0]))
-            self.ui.lsvListing.addItem(str(recording[1]))
+            self.ui.lblRecordingTitle.setText(str(recording[0]))
+            self.ui.tbvListing.setRowCount(len(recording[1]))
+            for i, s in enumerate(recording[1]):
+                self.ui.tbvListing.setItem(i, 0, QTableWidgetItem(hmsTimestamp(int(s.start*1000))))
+                self.ui.tbvListing.setItem(i, 1, QTableWidgetItem(hmsTimestamp(int(s.end*1000))))
+                self.ui.tbvListing.setItem(i, 2, QTableWidgetItem(s.text))
+            self.ui.tbvListing.resizeColumnsToContents()
         self.currentRecording = 0
         self.audioPlayer.setSource(QUrl.fromLocalFile(projectFolder / audioProject.recordings[self.currentRecording].audioFile))
         self.currentSegment = 0
@@ -482,11 +486,15 @@ class MainWindow(QMainWindow):
             # Save the transcript file
             saveTranscript(transcriptFile, transcript)
 
+            # Save the SRT file
+            srtFile = transcriptFile.with_suffix('.srt')
+            writeSrtFile(srtFile, transcript)
+
         self.statusBar().showMessage(f'Saved project {audioProject.name}({audioProject.projectFolder})', 3000)
 
     # **************************************************************************
     def clearRecordings(self):
-        self.ui.lsvListing.clear()
+        self.ui.tbvListing.clear()
 
     # **************************************************************************
     def onAutoSave(self):
@@ -501,7 +509,7 @@ class MainWindow(QMainWindow):
     def onProjectClose(self):
         qApp.logger.info(f"Closing project {self.audioProject.name}({self.audioProject.projectFolder})")
         self.ui.lblRecordings.setText("")
-        self.ui.lsvListing.clear()
+        self.ui.tbvListing.clear()
         self.autoSaveTimer.stop()
         self.statusBar().showMessage(f"AutosaveTimer: {self.autoSaveTimer.isActive()}", 5000)
         self.ui.actionClose.setEnabled(False)

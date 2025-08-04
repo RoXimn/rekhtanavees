@@ -25,6 +25,45 @@ FilenameCharLimit: int = 255
 
 
 # ******************************************************************************
+def hmsTimestamp(milliseconds: int, shorten: bool = False, useDays: bool = False) -> str:
+    """
+    Converts milliseconds to timestamp format (HH:MM:SS,ms).
+
+    Args:
+      milliseconds (int): An integer representing the time in milliseconds.
+      shorten (bool): Skip leading empty values.
+      useDays (bool): Resolve hours into days
+
+    Returns:
+      Timestamp formated as (HH:MM:SS,ms).
+    """
+    seconds, milliseconds = divmod(milliseconds, 1000)
+    minutes, seconds = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+    if useDays:
+        days, hours = divmod(hours, 24)
+    else:
+        days = 0
+
+    if shorten:
+        timestamp = ''
+        if days:
+            timestamp += f"{days}d "
+        if hours:
+            timestamp += f"{hours}:{minutes}:"
+        elif minutes:
+            timestamp += f"{minutes}:"
+        timestamp += f"{seconds + milliseconds / 1000.0}"
+
+    elif useDays:
+        timestamp = f"{days}d {hours:02}:{minutes:02}:{seconds:02},{milliseconds:03}"
+    else:
+        timestamp = f"{hours:02}:{minutes:02}:{seconds:02},{milliseconds:03}"
+
+    return timestamp
+
+
+# ******************************************************************************
 def isValidProjectName(name: str) -> bool:
     """Check the given name is valid to be used as a filename
 

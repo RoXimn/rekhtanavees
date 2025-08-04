@@ -16,6 +16,8 @@ from PySide6.QtCore import QBuffer, QIODevice
 from numpy.typing import NDArray
 from scipy.io import wavfile
 
+from misc.utils import hmsTimestamp
+
 
 # ******************************************************************************
 class AudioClip(object):
@@ -37,7 +39,11 @@ class AudioClip(object):
     # **************************************************************************
     def __len__(self) -> int:
         """Length of audio clip in milliseconds"""
-        return self.audioSignal.shape[0] // (self.sampleRate * 1000)
+        return (self.audioSignal.shape[0] * 1000) // self.sampleRate
+
+    # **************************************************************************
+    def __str__(self) -> str:
+        return f"AudioClip {self.audioSignal.shape[0]:,} samples, duration {hmsTimestamp(len(self))}, SR {self.sampleRate}/s"
 
     # **************************************************************************
     def sample2time(self, sample: int) -> int:

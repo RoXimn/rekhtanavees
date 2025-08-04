@@ -14,12 +14,12 @@ from PySide6.QtCore import (Qt, QRectF, QPointF, QMargins)
 from PySide6.QtGui import (QImage, QPainter, QBrush, QFont, QTransform, QColor)
 
 from rekhtanavees.audio.audioclip import AudioClip
-from rekhtanavees.audio.transcript import Word
 from rekhtanavees.audio.spectra import COLOR_MAPS_8BIT
+from rekhtanavees.audio.transcript import Segment
 
 
 # **************************************************************************
-class ClipImage:
+class AudioRenderer:
     """Image rendering of an audio signal.
 
     Handles rendering of an audio signal as mel-spectrogram image and the
@@ -36,14 +36,14 @@ class ClipImage:
     # **************************************************************************
     def __init__(self,
                  audioClip: AudioClip,
-                 widthPerSec: int = 24,
+                 widthPerSec: float = 24.0,
                  height: int = 48,
                  cmap: str = 'magma',
                  direction: Qt.LayoutDirection = Qt.LayoutDirection.LeftToRight):
 
         assert audioClip is not None
         self.audioClip: AudioClip = audioClip
-        self.widthPerSec: int = widthPerSec
+        self.widthPerSec: float = widthPerSec
         self.height: int = height
         self.cmap: list[int] = COLOR_MAPS_8BIT.get(cmap, COLOR_MAPS_8BIT['magma'])
         self.direction: Qt.LayoutDirection = direction
@@ -51,12 +51,12 @@ class ClipImage:
     # **************************************************************************
     def pixel2time(self, x: int, clipStart: int = 0) -> int:
         """Get time(ms) of the given sample"""
-        return clipStart + x * 1000 // self.widthPerSec
+        return int(clipStart + x * 1000 / self.widthPerSec)
 
     # **************************************************************************
     def time2pixel(self, t: int, clipStart: int = 0) -> int:
         """Get the x coordinate corresponding to the given time(ms)"""
-        return (t - clipStart) * self.widthPerSec // 1000
+        return int((t - clipStart) * self.widthPerSec / 1000)
 
     # **************************************************************************
     def renderSpectrum(self, startTime: int = None, endTime: int = None, nFFT: int = 2048,
@@ -80,7 +80,7 @@ class ClipImage:
         spectrum, start, end = self.audioClip.createSpectrogram(
             startTime=startTime, endTime=endTime,
             melBins=self.height,
-            hopLength=self.audioClip.sampleRate//self.widthPerSec,
+            hopLength=int(self.audioClip.sampleRate/self.widthPerSec),
             nFFT=nFFT
         )
         duration: int = end - start
@@ -112,13 +112,13 @@ class ClipImage:
         return image
 
     # **************************************************************************
-    def renderWords(self, image: QImage, label: str, words: list[Word]) -> QImage:
-        """Write the words at respective timeframes upon the image.
+    def renderWords(self, image: QImage, label: str, segment: Segment) -> QImage:
+        """Write the words/segment text at respective timeframes upon the image.
 
         Args:
             image (QImage): image to render upon
             label (str): segment label
-            words (Word): list of words to render
+            segment (Segment): transcript segment
 
         Note:
             Needs the ``startTime`` attribute on the given ``image``.
@@ -134,57 +134,81 @@ class ClipImage:
         p.begin(image)
         p.setRenderHint(QPainter.Antialiasing)
 
-        for w in words:
-            lt = self.time2pixel(int(w.start * 1000), image.startTime)
-            rt = self.time2pixel(int(w.end * 1000), image.startTime)
+        # Draw words
+        if segment.words:
+            for w in segment.words:
+                lt = self.time2pixel(int(w.start * 1000), image.startTime)
+                rt = self.time2pixel(int(w.end * 1000), image.startTime)
+                top = 0
+                btm = image.height() - 1
+
+                wordBox = QRectF(QPointF(lt, top), QPointF(rt, btm))
+                if self.direction == Qt.LayoutDirection.RightToLeft:
+                    transform: QTransform = QTransform()
+                    # start at right edge
+                    transform.translate(image.width(), 0)
+                    # flip x-axis
+                    transform.scale(-1, 1)
+                    wordBox = transform.mapRect(wordBox)
+
+                p.setPen(Qt.darkGray)
+                p.drawRect(wordBox)
+                # p.drawLine(box.topLeft(), box.bottomRight())
+                # p.drawLine(box.bottomLeft(), box.topRight())
+
+                white = QColor(Qt.white)
+                white.setAlpha(int(w.probability*255))
+                p.setPen(white)
+                p.setFont(QFont('Noto Naskh Arabic', 18))
+                p.drawText(wordBox, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter, w.word)
+
+                p.setPen(Qt.black)
+                p.setFont(QFont('Courier New', 12, weight=900))
+                pc = f'{int(w.probability*100)}%'
+                p.drawText(wordBox, Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter, pc)
+        else:
+            lt = self.time2pixel(int(segment.start * 1000), image.startTime)
+            rt = self.time2pixel(int(segment.end * 1000), image.startTime)
             top = 0
             btm = image.height() - 1
 
-            wordBox = QRectF(QPointF(lt, top), QPointF(rt, btm))
+            segmentBox = QRectF(QPointF(lt, top), QPointF(rt, btm))
             if self.direction == Qt.LayoutDirection.RightToLeft:
                 transform: QTransform = QTransform()
                 # start at right edge
                 transform.translate(image.width(), 0)
                 # flip x-axis
                 transform.scale(-1, 1)
-                wordBox = transform.mapRect(wordBox)
+                segmentBox = transform.mapRect(segmentBox)
 
             p.setPen(Qt.darkGray)
-            p.drawRect(wordBox)
-            # p.drawLine(box.topLeft(), box.bottomRight())
-            # p.drawLine(box.bottomLeft(), box.topRight())
+            p.drawRect(segmentBox)
 
-            white = QColor(Qt.white)
-            white.setAlpha(int(w.probability*255))
-            p.setPen(white)
+            p.setPen(Qt.white)
             p.setFont(QFont('Noto Naskh Arabic', 18))
-            p.drawText(wordBox, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter, w.word)
+            p.drawText(segmentBox, Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter, segment.text)
+
+        if label:
+            lt = 0
+            rt = image.width() - 1
+            top = 0
+            btm = image.height() - 1
+            imageBox = QRectF(QPointF(lt, top), QPointF(rt, btm))
+
+            align = Qt.AlignmentFlag.AlignVCenter | (Qt.AlignmentFlag.AlignRight
+                                                     if self.direction == Qt.LayoutDirection.RightToLeft
+                                                     else Qt.AlignmentFlag.AlignLeft)
+            p.setFont(QFont('Courier New', 18, weight=900))
+            bb = p.boundingRect(imageBox, align, label).marginsAdded(QMargins(6, 1, 6, 1))
+            if self.direction == Qt.LayoutDirection.RightToLeft:
+                bb.moveRight(imageBox.right())
+            else:
+                bb.moveLeft(imageBox.left())
+            p.setBrush(QBrush(QColor(Qt.yellow)))
+            p.drawRoundedRect(bb, 3.0, 3.0)
 
             p.setPen(Qt.black)
-            p.setFont(QFont('Courier New', 12, weight=900))
-            pc = f'{int(w.probability*100)}%'
-            p.drawText(wordBox, Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter, pc)
-
-        lt = 0
-        rt = image.width() - 1
-        top = 0
-        btm = image.height() - 1
-        imageBox = QRectF(QPointF(lt, top), QPointF(rt, btm))
-
-        align = Qt.AlignmentFlag.AlignVCenter | (Qt.AlignmentFlag.AlignRight
-                                                 if self.direction == Qt.LayoutDirection.RightToLeft
-                                                 else Qt.AlignmentFlag.AlignLeft)
-        p.setFont(QFont('Courier New', 18, weight=900))
-        bb = p.boundingRect(imageBox, align, label).marginsAdded(QMargins(6, 1, 6, 1))
-        if self.direction == Qt.LayoutDirection.RightToLeft:
-            bb.moveRight(imageBox.right())
-        else:
-            bb.moveLeft(imageBox.left())
-        p.setBrush(QBrush(QColor(Qt.yellow)))
-        p.drawRoundedRect(bb, 3.0, 3.0)
-
-        p.setPen(Qt.black)
-        p.drawText(bb, Qt.AlignmentFlag.AlignCenter, label)
+            p.drawText(bb, Qt.AlignmentFlag.AlignCenter, label)
 
         p.end()
 
@@ -195,7 +219,7 @@ class ClipImage:
 if __name__ == '__main__':
     import orjson as json
     from pathlib import Path
-    from PySide6.QtGui import QColor, QGuiApplication
+    from PySide6.QtGui import QGuiApplication
     from rekhtanavees.audio.transcript import Segment
     app = QGuiApplication()
 
@@ -203,7 +227,7 @@ if __name__ == '__main__':
     j = json.loads(Path(r"D:\tools\urdu-youtube\zia-mohyeddin\Dawood Rehber ｜ Zia Mohyeddin Ke Sath Aik Shaam Vol.24 [cHUQ1P2kb58].json").read_text(encoding='utf-8'))
     ac = AudioClip.createAudioClip(Path(r"D:\tools\urdu-youtube\zia-mohyeddin\Dawood Rehber ｜ Zia Mohyeddin Ke Sath Aik Shaam Vol.24 [cHUQ1P2kb58].opus"))
     print(ac.audioSignal.ndim, ac.audioSignal.dtype, ac.audioSignal.dtype.itemsize, ac.sampleRate)
-    ci = ClipImage(ac, widthPerSec=256, height=96, direction=Qt.LayoutDirection.RightToLeft, cmap='viridis')
+    ci = AudioRenderer(ac, widthPerSec=256, height=96, direction=Qt.LayoutDirection.RightToLeft, cmap='viridis')
 
     for segment in [Segment.parse_obj(s) for s in j['segments'][:10]]:
         img = ci.renderSpectrum(startTime=tms(segment.start), endTime=tms(segment.end))

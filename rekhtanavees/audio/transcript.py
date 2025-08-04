@@ -14,6 +14,7 @@ from typing import List
 
 from pydantic import BaseModel, PositiveInt
 
+from rekhtanavees.misc.utils import hmsTimestamp
 
 # ******************************************************************************
 class Word(BaseModel):
@@ -34,7 +35,7 @@ class Segment(BaseModel):
     avg_logprob: float
     compression_ratio: float
     no_speech_prob: float
-    words: list[Word]
+    words: list[Word] | None = None
 
     speakerId: PositiveInt | None = None
     tags: List[str] | None = None
@@ -63,10 +64,27 @@ def saveTranscript(transcriptFile: Path, segments: list[Segment]) -> None:
     assert isinstance(transcriptFile, Path)
     assert isinstance(segments, list)
 
+    for s in segments:
+        s.words = None
+
     ts = {"segments": [s.model_dump() for s in segments],
           "text": ''.join([s.text for s in segments])}
     transcriptFile.write_text(json.dumps(ts, ensure_ascii=False, indent=2),
                               encoding='utf-8')
+
+# ******************************************************************************
+def writeSrtFile(fname: str, subtitles: list[Segment]):
+    """Write the list of subtitles to an SRT file.
+
+    Args:
+        fname (str): The name of the SRT file to create.
+        subtitles (list): A list of segments.
+    """
+    with open(fname, 'w', encoding='utf-8') as f:
+        for i, sub in enumerate(subtitles, start=1):
+            f.write(f"{i}\n")
+            f.write(f"{hmsTimestamp(int(sub.start * 1000))} --> {hmsTimestamp(int(sub.end * 1000))}\n")
+            f.write(f"{sub.text}\n\n")
 
 # ******************************************************************************
 if __name__ == '__main__':
