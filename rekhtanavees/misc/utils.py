@@ -56,9 +56,9 @@ def hmsTimestamp(milliseconds: int, shorten: bool = False, useDays: bool = False
         timestamp += f"{seconds + milliseconds / 1000.0}"
 
     elif useDays:
-        timestamp = f"{days}d {hours:02}:{minutes:02}:{seconds:02},{milliseconds:03}"
+        timestamp = f"{days}d {hours:02}:{minutes:02}:{seconds:02}.{milliseconds:03}"
     else:
-        timestamp = f"{hours:02}:{minutes:02}:{seconds:02},{milliseconds:03}"
+        timestamp = f"{hours:02}:{minutes:02}:{seconds:02}.{milliseconds:03}"
 
     return timestamp
 
