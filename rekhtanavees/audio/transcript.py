@@ -99,8 +99,13 @@ def saveTranscript(transcriptFile: Path, segments: list[Segment]) -> None:
     for s in segments:
         s.words = None
 
+    # Reset segment ids
+    for i, s in enumerate(segments):
+        s.id = i + 1
+
     ts = {"segments": [s.model_dump() for s in segments],
           "text": ''.join([s.text for s in segments])}
+
     transcriptFile.write_text(json.dumps(ts, ensure_ascii=False, indent=2),
                               encoding='utf-8')
 

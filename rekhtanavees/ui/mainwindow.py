@@ -179,8 +179,8 @@ class MainWindow(QMainWindow):
 
         self.updateRecentFileList()
 
-        self.audioProject = None
-        self.audioRecordings = []
+        self.audioProject: AudioProject | None = None
+        self.audioRecordings: list = []
 
         self.scene = QGraphicsScene()
 
@@ -224,25 +224,38 @@ class MainWindow(QMainWindow):
         Initialized to 0.
         """
 
-        self.ui.transcript.textChanged.connect(self.updateTranscript)
+        self.ui.transcript.textChanged.connect(self.updateTranscriptSegment)
         self.ui.videoView.installEventFilter(self)
 
+        self.ui.sbxIndex.setMinimum(0)
+        self.ui.sbxIndex.setMaximum(0)
+        self.ui.sbxIndex.setSuffix("")
+        self.ui.sbxIndex.setDisabled(True)
+        self.ui.sbxIndex.valueChanged.connect(self.onIndexChanged)
+
+        self.ui.btnPlay.setDisabled(True)
+        self.ui.btnPlay.clicked.connect(self.onTogglePlay)
+
+        self.ui.cbxLoop.setDisabled(True)
+
     # **************************************************************************
-    def updateTranscript(self):
+    def updateTranscriptSegment(self):
         text = self.ui.transcript.toPlainText()
-        self.audioRecordings[self.currentRecording][1][self.currentSegment].text = text
-        self.cc.setPlainText(text)
+        if self.audioRecordings:
+            self.audioRecordings[self.currentRecording][1][self.currentSegment].text = text
+            self.cc.setPlainText(text)
 
     # **************************************************************************
     def keyPressEvent(self, e: QKeyEvent):
         focus: QWidget = self.focusWidget()
         if focus is self:
             if e.key() == Qt.Key_Space:
-                self.onTogglePlay()
-            elif e.key() == Qt.Key_Right:
-                self.updateSegment(self.currentRecording, self.currentSegment + 1)
-            elif e.key() == Qt.Key_Left:
-                self.updateSegment(self.currentRecording, self.currentSegment - 1)
+                # self.onTogglePlay()
+                pass
+            elif e.key() == Qt.Key_Down:
+                self.updateCurrentSegment(self.currentSegment + 1)
+            elif e.key() == Qt.Key_Up:
+                self.updateCurrentSegment(self.currentSegment - 1)
             elif e.key() in (Qt.Key_Return, Qt.Key_Enter):
                 self.ui.transcript.setFocus()
         elif focus is self.ui.transcript:
@@ -252,31 +265,49 @@ class MainWindow(QMainWindow):
             super(MainWindow, self).keyPressEvent(e)
 
     # **************************************************************************
+    def onIndexChanged(self, idx: int):
+        if len(self.audioRecordings) == 0:
+            return
+
+        self.updateCurrentSegment(idx - 1)
+        self.ui.audioSpectrumArea.audioSpectrum.setFocus()
+
+    # **************************************************************************
     def onTogglePlay(self):
+        if len(self.audioRecordings) == 0:
+            return
+
         if self.audioPlayer.playbackState() == QMediaPlayer.PlayingState:
             self.pauseSegment()
+
+            self.ui.btnPlay.setText("Play")
+            icon = self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
+            self.ui.btnPlay.setIcon(icon)
         else:
             self.playSegment()
+
+            self.ui.btnPlay.setText("Pause")
+            icon = self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPause)
+            self.ui.btnPlay.setIcon(icon)
 
     # **************************************************************************
     def onDurationChanged(self, duration):
         self.ui.playSlider.setMaximum(duration)
 
     # **************************************************************************
-    def updateSegment(self, rec: int, i: int):
-        segments = self.audioRecordings[rec][1]
-        self.currentSegment = max(min(len(segments) - 1, i), 0)
+    def displayCurrentSegment(self):
+        if len(self.audioRecordings) == 0:
+            return
 
+        segments = self.audioRecordings[self.currentRecording][1]
         if segments:
             s = segments[self.currentSegment]
-            ar = AudioRenderer(self.audioRecordings[rec][0], widthPerSec=256, height=96,
-                               direction=Qt.LayoutDirection.RightToLeft, cmap='viridis')
-            img = ar.renderSpectrum(startTime=tms(s.start - 1), endTime=tms(s.end + 1))
-            img = ar.renderWords(image=img, label=f'#{s.id}', segment=s)
 
-            self.ui.lblSpectrum.setPixmap(QPixmap(img))
             self.ui.transcript.setPlainText(s.text)
             self.ui.lblSegment.setText(f'{self.currentSegment+1:03}/{len(segments)}')
+
+            self.ui.audioSpectrumArea.audioSpectrum.currentSegmentIndex = self.currentSegment
+            self.ui.audioSpectrumArea.showSegment(self.currentSegment)
 
     # **************************************************************************
     def onNew(self) -> None:
@@ -316,6 +347,9 @@ class MainWindow(QMainWindow):
 
     # **************************************************************************
     def playSegment(self):
+        if len(self.audioRecordings) == 0:
+            return
+
         s = self.audioRecordings[self.currentRecording][1][self.currentSegment]
         self.audioPlayer.setPosition(tms(s.start))
         self.videoPlayer.setPosition(tms(s.start))
@@ -330,13 +364,19 @@ class MainWindow(QMainWindow):
     # **************************************************************************
     def loopBack(self, pos):
         self.ui.playSlider.setValue(pos)
-        segment = self.audioRecordings[self.currentRecording][1][self.currentSegment]
-        if pos > tms(segment.end):
-            print('Looping back...')
+
+        if len(self.audioRecordings) == 0:
             self.pauseSegment()
-            QTimer.singleShot(1000, self.playSegment)
-        elif pos < tms(segment.start):
-            self.playSegment()
+            return
+
+        segment = self.audioRecordings[self.currentRecording][1][self.currentSegment]
+        if self.ui.cbxLoop.isChecked():
+            if pos > tms(segment.end):
+                    print('Looping back...')
+                    self.pauseSegment()
+                    QTimer.singleShot(1000, self.playSegment)
+            elif pos < tms(segment.start):
+                self.playSegment()
 
     # **************************************************************************
     def onOpenSource(self) -> None:
@@ -425,6 +465,12 @@ class MainWindow(QMainWindow):
         self.updateRecentFileList()
 
     # **************************************************************************
+    def updateCurrentSegment(self, idx: int):
+        segments = self.audioRecordings[self.currentRecording][1]
+        self.currentSegment = self.currentSegment = max(min(len(segments) - 1, idx), 0)
+        self.displayCurrentSegment()
+
+    # **************************************************************************
     def loadAudioProject(self, projectFilename: Path):
         qApp.logger.info(f'Loading {projectFilename!s}...')
         self.setWindowFilePath(str(projectFilename))
@@ -459,10 +505,22 @@ class MainWindow(QMainWindow):
                 self.ui.tbvListing.setItem(i, 1, QTableWidgetItem(hmsTimestamp(int(s.end*1000))))
                 self.ui.tbvListing.setItem(i, 2, QTableWidgetItem(s.text))
             self.ui.tbvListing.resizeColumnsToContents()
+
         self.currentRecording = 0
+        recording = self.audioRecordings[self.currentRecording]
         self.audioPlayer.setSource(QUrl.fromLocalFile(projectFolder / audioProject.recordings[self.currentRecording].audioFile))
+        self.ui.audioSpectrumArea.audioSpectrum.setSource(recording[0], recording[1])
+
         self.currentSegment = 0
-        self.updateSegment(self.currentRecording, self.currentSegment)
+        self.displayCurrentSegment()
+
+        self.ui.sbxIndex.setMinimum(1)
+        self.ui.sbxIndex.setMaximum(len(recording[1]))
+        self.ui.sbxIndex.setSuffix(f"/{len(recording[1])}")
+        self.ui.sbxIndex.setEnabled(True)
+
+        self.ui.btnPlay.setEnabled(True)
+        self.ui.cbxLoop.setEnabled(True)
 
         self.ui.actionClose.setEnabled(True)
         self.autoSaveTimer.start(RSettings().Main.AutoSaveInterval * 60 * 1000)
@@ -495,6 +553,11 @@ class MainWindow(QMainWindow):
     # **************************************************************************
     def clearRecordings(self):
         self.ui.tbvListing.clear()
+        self.ui.lblRecordings.clear()
+        self.ui.transcript.clear()
+
+        self.audioRecordings = []
+        self.ui.audioSpectrumArea.audioSpectrum.setSource(None, None)
 
     # **************************************************************************
     def onAutoSave(self):
@@ -509,7 +572,16 @@ class MainWindow(QMainWindow):
     def onProjectClose(self):
         qApp.logger.info(f"Closing project {self.audioProject.name}({self.audioProject.projectFolder})")
         self.ui.lblRecordings.setText("")
-        self.ui.tbvListing.clear()
+        self.clearRecordings()
+
+        self.ui.sbxIndex.setMinimum(0)
+        self.ui.sbxIndex.setMaximum(0)
+        self.ui.sbxIndex.setSuffix("")
+        self.ui.sbxIndex.setDisabled(True)
+
+        self.ui.btnPlay.setDisabled(True)
+        self.ui.cbxLoop.setDisabled(True)
+
         self.autoSaveTimer.stop()
         self.statusBar().showMessage(f"AutosaveTimer: {self.autoSaveTimer.isActive()}", 5000)
         self.ui.actionClose.setEnabled(False)

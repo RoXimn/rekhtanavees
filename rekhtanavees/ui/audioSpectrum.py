@@ -10,7 +10,7 @@
 from enum import Enum
 from pathlib import Path
 
-from PySide6.QtCore import (Qt, QSize, QPoint, QPointF, Signal, QRectF, QElapsedTimer)
+from PySide6.QtCore import (Qt, QSize, QPoint, QPointF, Signal, QRectF, QElapsedTimer, QCoreApplication)
 from PySide6.QtGui import (
     QPainter, QPen, QBrush, QColor, QPolygonF, QResizeEvent, QTransform, QFont
 )
@@ -22,7 +22,6 @@ from PySide6.QtWidgets import (
 from audio import AudioRenderer, Segment, findSegment, loadTranscript
 from rekhtanavees.audio import AudioClip
 from rekhtanavees.misc.utils import hmsTimestamp
-
 
 # ******************************************************************************
 class TimeInterval(Enum):
@@ -161,7 +160,7 @@ class AudioSpectrumWidget(QWidget):
         self.renderer.widthPerSec = factor.value * 1000.0
         newSize = self.sizeHint()
         resizeEvent = QResizeEvent(newSize, oldSize)
-        QApplication.postEvent(self, resizeEvent)
+        QCoreApplication.postEvent(self, resizeEvent)
         self.update()
 
     def __init__(self, parent=None, direction: Qt.LayoutDirection = Qt.RightToLeft):
@@ -170,17 +169,11 @@ class AudioSpectrumWidget(QWidget):
 
         self._scaleFactor: TimeInterval = TimeInterval.Millisecond25
 
-        self.ac = None
-        self.renderer = None
-        self.segments = None
+        self.ac: AudioClip | None = None
+        self.renderer: AudioRenderer | None = None
+        self.segments: list[Segment] | None = None
 
         self.currentSegment = -1
-
-        # self.ac = AudioClip.createAudioClip(Path(r"C:\Users\driyo\Documents\Ertugrul Urdu\S1E1-ErtugrulGhaziUrdu-15min.flac"))
-        # self.segments = loadTranscript(Path(r"C:\Users\driyo\Documents\Ertugrul Urdu\S1E1-ErtugrulGhaziUrdu-15min.json"))
-        # self.renderer = AudioRenderer(self.ac, widthPerSec=self.interval.value * 1000.0, height=_Height, direction=Qt.LeftToRight, cmap=_SpectrumCMap)
-        # self.ac = AudioClip.createAudioClip(Path(r"F:\sounds\piano-chords.flac"))
-        # self.renderer = AudioRenderer(self.ac, widthPerSec=self.interval.value * 1000.0, height=_Height, direction=Qt.LeftToRight, cmap=_SpectrumCMap)
 
         self.setMouseTracking(True)
         self.setFocusPolicy(Qt.StrongFocus)
@@ -207,51 +200,57 @@ class AudioSpectrumWidget(QWidget):
         """Total time (ms) of the audio clip"""
         return len(self.ac) if self.ac else 0
 
-    def setSource(self, audioFile: str = None, segmentsFile: str = None):
+    def setSource(self, audioFile: str | AudioClip | None = None, segments: str | list[Segment] | None = None):
         """
         Sets the source audio file and segments file.
 
         audioFile (str) : Path to the audio file. If None, clears the source.
-        segmentsFile (str): Path to the segments file. If None, clears the segments.
+        segments (list[Segment]): List of segments. If None, clears the segments.
         """
-        timer = QElapsedTimer()
 
         if audioFile is not None:
-            assert isinstance(audioFile, str)
-            af = Path(audioFile)
-            assert af.exists()
-            assert af.is_file()
-            if self.ac:
-                self.renderer = None
-                self.ac = None
-
-            timer.restart()
             oldSize = self.sizeHint()
-            self.ac = AudioClip.createAudioClip(af)
-            self.renderer = AudioRenderer(self.ac,
-                                          widthPerSec=self.interval.value * 1000.0,
-                                          height=_Height,
-                                          direction=Qt.LeftToRight,
-                                          cmap=_SpectrumCMap)
-            print(f"Audio file set to {audioFile} [Elapsed time: {timer.elapsed()} ms]")
+            if isinstance(audioFile, str):
+                af = Path(audioFile)
+                assert af.exists()
+                assert af.is_file()
+                if self.ac:
+                    self.renderer = None
+                    self.ac = None
+
+                timer = QElapsedTimer()
+                timer.restart()
+                self.ac = AudioClip.createAudioClip(af)
+                self.renderer = AudioRenderer(self.ac,
+                                              widthPerSec=self.interval.value * 1000.0,
+                                              height=_Height,
+                                              direction=Qt.LeftToRight,
+                                              cmap=_SpectrumCMap)
+                print(f"Audio file set to {audioFile} [Elapsed time: {timer.elapsed()} ms]")
+            elif isinstance(audioFile, AudioClip):
+                if self.ac:
+                    self.renderer = None
+                    self.ac = None
+
+                self.ac = audioFile
+                self.renderer = AudioRenderer(self.ac,
+                                              widthPerSec=self.interval.value * 1000.0,
+                                              height=_Height,
+                                              direction=Qt.LeftToRight,
+                                              cmap=_SpectrumCMap)
 
             newSize = self.sizeHint()
             resizeEvent = QResizeEvent(newSize, oldSize)
-            QApplication.postEvent(self, resizeEvent)
+            QCoreApplication.postEvent(self, resizeEvent)
         else:
             self.ac = None
             self.renderer = None
 
-        if segmentsFile is not None:
-            assert isinstance(segmentsFile, str)
-            sf = Path(segmentsFile)
-            assert sf.exists()
-            assert sf.is_file()
-            if self.segments:
-                self.segments = None
-            timer.restart()
-            self.segments = loadTranscript(sf)
-            print(f"Segments file set to {segmentsFile} [Elapsed time: {timer.elapsed()} ms]")
+        if segments is not None:
+            if isinstance(segments, list):
+                if self.segments:
+                    self.segments = None
+                self.segments = segments
         else:
             self.segments = None
 
@@ -274,6 +273,8 @@ class AudioSpectrumWidget(QWidget):
             self.start, self.end = self.end, self.start
 
         if prevStart != self.start:
+            if self.segments:
+                self.segments[self.currentSegment].start = self.start / 1000.0
             self.markerChanged.emit(self.start, self.RulerScale[self._scaleFactor][2])
             self.update()
 
@@ -291,6 +292,8 @@ class AudioSpectrumWidget(QWidget):
             self.start, self.end = self.end, self.start
 
         if prevEnd != self.end:
+            if self.segments:
+                self.segments[self.currentSegment].end = self.end / 1000.0
             self.markerChanged.emit(self.end, self.RulerScale[self._scaleFactor][2])
             self.update()
 
@@ -300,7 +303,6 @@ class AudioSpectrumWidget(QWidget):
 
     @currentSegment.setter
     def currentSegment(self, index: int):
-
         if self.segments and 0 <= index < len(self.segments):
             self.currentSegmentIndex = index
             s: Segment = self.segments[index]
@@ -354,10 +356,14 @@ class AudioSpectrumWidget(QWidget):
         viewBox = QRectF(x0, 0, w0, _Height)  # x, y, width, height
 
         # Background fill
-        # brush = QBrush(Qt.gray)
-        # brush.setStyle(Qt.SolidPattern)
-        # rect = QRect(x0, 0, x0 + w0 + major, h)
-        # painter.fillRect(rect, brush)
+        brush = QBrush(Qt.gray)
+        brush.setStyle(Qt.SolidPattern)
+        rect = QRectF(x0, 0, x0 + w0 + major, h)
+        painter.fillRect(rect, brush)
+
+        if not self.ac:
+            painter.end()
+            return
 
         # Spectrum
         st, et = self.pix2time(x0), self.pix2time(x0 + w0 + major)
@@ -469,20 +475,20 @@ class AudioSpectrumWidget(QWidget):
         self.setToolTip(f"{hmsTimestamp(t)} ({t/1000.0:,.03f}s)")
 
     def mousePressEvent(self, e):
-        if e.modifiers() == Qt.NoModifier:
-            if e.button() == Qt.LeftButton:
-                wx = e.position().x()
-                if self.direction == Qt.RightToLeft:
-                    # Convert from screen space to widget space
-                    wx = self.width() - wx
-                twx = self.pix2time(wx)
-                idx = findSegment(self.segments, twx/1000.0)
-                self.currentSegment = idx
-                e.accept()
-                self.update()
-                return
+        # if e.modifiers() == Qt.NoModifier:
+        #     if self.segments and e.button() == Qt.LeftButton:
+        #         wx = e.position().x()
+        #         if self.direction == Qt.RightToLeft:
+        #             # Convert from screen space to widget space
+        #             wx = self.width() - wx
+        #         twx = self.pix2time(wx)
+        #         idx = findSegment(self.segments, twx/1000.0)
+        #         self.currentSegment = idx
+        #         e.accept()
+        #         self.update()
+        #         return
 
-        elif e.modifiers() & Qt.ShiftModifier:
+        if e.modifiers() & Qt.ShiftModifier:
             # Shift + Left Click
             if e.button() == Qt.LeftButton:
                 fSetMarker = self.setStartMarker
@@ -566,7 +572,7 @@ class AudioSpectrumWidget(QWidget):
 
 # ******************************************************************************
 class AudioSpectrumScrollArea(QScrollArea):
-    def __init__(self, parent=None, direction: Qt.LayoutDirection = Qt.LeftToRight):
+    def __init__(self, parent=None, direction: Qt.LayoutDirection = Qt.RightToLeft):
         super(AudioSpectrumScrollArea, self).__init__(parent)
 
         self.setWidgetResizable(True)
@@ -613,6 +619,27 @@ class AudioSpectrumScrollArea(QScrollArea):
 
         hbar.setValue(v)
         self.verticalScrollBar().setValue(0)
+        self.audioSpectrum.update()
+
+    def showSegment(self, i: int):
+        """Show the given segment"""
+        if self.audioSpectrum.segments is None:
+            return
+
+        hbar: QScrollBar = self.horizontalScrollBar()
+        margin: int = self.audioSpectrum.RulerScale[self.audioSpectrum.interval][1]
+
+        t = int(self.audioSpectrum.segments[self.audioSpectrum.currentSegment].start * 1000.0)
+        tpx = self.audioSpectrum.time2pix(t)
+        v = tpx - margin
+
+        # Hack to wait for the underlying widget to resize
+        while hbar.maximum() == 0:
+            QCoreApplication.instance().processEvents()
+
+        hbar.setValue(v)
+        self.verticalScrollBar().setValue(0)
+        self.audioSpectrum.update()
 
     def setInterval(self, interval: TimeInterval):
         self.audioSpectrum.interval = interval
@@ -639,7 +666,7 @@ class AudioSpectrumScrollArea(QScrollArea):
                 oldSize = self.audioSpectrum.size()
                 self.audioSpectrum.interval = self.audioSpectrum.interval.prev()
                 while self.audioSpectrum.size() == oldSize or hbar.maximum() + hbar.pageStep() == oldSize.width():
-                    QApplication.instance().processEvents()
+                    QCoreApplication.instance().processEvents()
                 self.showTime(t, -1, dx)
         elif delta_y < 0:  # Scroll down
             # Zoom out to bigger time interval
@@ -647,7 +674,7 @@ class AudioSpectrumScrollArea(QScrollArea):
                 oldSize = self.audioSpectrum.size()
                 self.audioSpectrum.interval = self.audioSpectrum.interval.next()
                 while self.audioSpectrum.size() == oldSize or hbar.maximum() + hbar.pageStep() == oldSize.width():
-                    QApplication.instance().processEvents()
+                    QCoreApplication.instance().processEvents()
                 self.showTime(t, -1, dx)
 
         # Call the base class implementation to ensure proper event handling
@@ -677,11 +704,12 @@ if __name__ == '__main__':
     layout.addWidget(audioWidgetRTL)
 
     def loadSource(self):
-        print("Load Source")
+        print("Loading Source...")
         # audioWidgetRTL.audioSpectrum.setSource(r"F:\sounds\piano-chords.flac")
+        segments = loadTranscript(Path(r"C:\Users\driyo\Documents\Ertugrul Urdu\S1E1-ErtugrulGhaziUrdu-15min.json"))
         audioWidgetRTL.audioSpectrum.setSource(
             r"C:\Users\driyo\Documents\Ertugrul Urdu\S1E1-ErtugrulGhaziUrdu-15min.flac",
-            r"C:\Users\driyo\Documents\Ertugrul Urdu\S1E1-ErtugrulGhaziUrdu-15min.json"
+            segments
         )
     btn = QPushButton("Load...")
     btn.clicked.connect(loadSource)

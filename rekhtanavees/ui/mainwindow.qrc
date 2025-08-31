@@ -1,5 +1,9 @@
 <RCC>
   <qresource prefix="images">
+    <file>icons/circle-chevron-left.png</file>
+    <file>icons/circle-chevron-right.png</file>
+    <file>icons/circle-chevron-down.png</file>
+    <file>icons/circle-chevron-up.png</file>
     <file>icons/edit-clear-list.png</file>
     <file>icons/list-add.png</file>
     <file>icons/list-remove.png</file>
