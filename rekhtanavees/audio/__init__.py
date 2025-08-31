@@ -9,4 +9,6 @@
 # ******************************************************************************
 from .audioclip import  AudioClip
 from .audiorenderer import AudioRenderer
-from .transcript import Segment, Word, loadTranscript, saveTranscript, writeSrtFile
+from .transcript import (
+    Segment, Word, loadTranscript, saveTranscript, writeSrtFile, findSegment
+)

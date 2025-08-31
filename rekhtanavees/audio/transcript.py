@@ -40,6 +40,38 @@ class Segment(BaseModel):
     speakerId: PositiveInt | None = None
     tags: List[str] | None = None
 
+    def __contains__(self, t: float):
+        """Check if given time (in seconds) overlaps with this segment"""
+        return self.start <= t <= self.end
+
+
+# ******************************************************************************
+def findSegment(segments: list[Segment], targetTime: float) -> int:
+    """
+    Performs a binary search on the sorted list Segments to find the target.
+
+    Args:
+        segments: The sorted list of Segments to search within.
+        targetTime: The time stamp (in seconds) to search for.
+
+    Returns:
+        The index of the target Segment if found, otherwise -1.
+    """
+    low = 0
+    high = len(segments) - 1
+
+    while low <= high:
+        mid = (low + high) // 2  # Calculate the middle index
+
+        if targetTime in segments[mid]:
+            return mid  # Target found at mid index
+        elif segments[mid].end < targetTime:
+            low = mid + 1  # Target is in the right half
+        else:
+            high = mid - 1  # Target is in the left half
+
+    return -1  # Target not found in the list
+
 
 # ******************************************************************************
 def loadTranscript(transcriptFile: Path) -> list[Segment]:
