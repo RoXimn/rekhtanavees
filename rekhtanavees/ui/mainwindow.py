@@ -307,9 +307,9 @@ class MainWindow(QMainWindow):
 
             self.ui.transcript.setPlainText(s.text)
             self.ui.lblSegment.setText(
-                f'[E: {hmsTimestamp(s.end*1000.0, shorten=True)}({s.end:,.3f}) - '
-                f'S: {hmsTimestamp(s.start*1000.0, shorten=True)}({s.start:,.3f}), '
-                f'\u0394{int((s.end-s.start)*1000.0):,}ms] '
+                f'[E: {hmsTimestamp(tms(s.end), shorten=True)}({s.end:,.3f}) - '
+                f'S: {hmsTimestamp(tms(s.start), shorten=True)}({s.start:,.3f}), '
+                f'\u0394{tms(s.end)-tms(s.start):,}ms] '
                 f'{self.currentSegment+1:03}/{len(segments)}')
 
             self.ui.audioSpectrumArea.audioSpectrum.currentSegment = self.currentSegment
@@ -441,7 +441,7 @@ class MainWindow(QMainWindow):
         qApp.logger.debug(f"Adjusting recent list for {projectFilename}")
         settings = RSettings()
         recentFiles: List[Path] = settings.Main.RecentFiles
-        qApp.logger.info(f"Total recents[{len(recentFiles)}] {recentFiles}")
+        qApp.logger.debug(f"Total recents[{len(recentFiles)}] {', '.join(f'{rf!s}' for rf in recentFiles)}")
 
         while projectFilename in recentFiles:
             recentFiles.remove(projectFilename)
@@ -450,7 +450,7 @@ class MainWindow(QMainWindow):
             del recentFiles[self.maxRecentCount:]
         settings.Main.RecentFiles = recentFiles
         settings.save()
-        qApp.logger.debug(f"Updated recents[{len(recentFiles)}] {recentFiles}")
+        qApp.logger.debug(f"Updated recents[{len(recentFiles)}] {', '.join(f'{rf!s}' for rf in recentFiles)}")
 
         self.updateRecentFileList()
 
@@ -459,7 +459,7 @@ class MainWindow(QMainWindow):
         settings = RSettings()
         recentFiles: List[Path] = settings.Main.RecentFiles
         total: int = min(len(recentFiles), settings.Main.RecentMaxCount)
-        qApp.logger.info(f"Total recents[{total}] {recentFiles}")
+        qApp.logger.debug(f"Total recents[{total}] {', '.join(f'{rf!s}' for rf in recentFiles)}")
 
         for i in range(total):
             recentFile = recentFiles[i]
@@ -517,15 +517,15 @@ class MainWindow(QMainWindow):
             self.audioRecordings.append((ac, ts))
 
         self.audioProject = audioProject
-        self.ui.lblRecordings.setText(f'Audio Recordings: <b>{self.audioProject.title}</b> [{len(self.audioProject.recordings)}]')
+        self.ui.lblRecordingsTitle.setText(f'Audio Recordings: <b>{self.audioProject.title}</b> [{len(self.audioProject.recordings)}]')
         for recording in self.audioRecordings:
-            self.ui.lblRecordingTitle.setText(str(recording[0]))
-            self.ui.tbvListing.setRowCount(len(recording[1]))
-            for i, s in enumerate(recording[1]):
-                self.ui.tbvListing.setItem(i, 0, QTableWidgetItem(hmsTimestamp(int(s.start * 1000))))
-                self.ui.tbvListing.setItem(i, 1, QTableWidgetItem(hmsTimestamp(int(s.end * 1000))))
-                self.ui.tbvListing.setItem(i, 2, QTableWidgetItem(s.text))
-            self.ui.tbvListing.resizeColumnsToContents()
+            self.ui.lblRecordingsTitle.setText(str(recording[0]))
+            # self.ui.tbvListing.setRowCount(len(recording[1]))
+            # for i, s in enumerate(recording[1]):
+            #     self.ui.tbvListing.setItem(i, 0, QTableWidgetItem(hmsTimestamp(tms(s.start))))
+            #     self.ui.tbvListing.setItem(i, 1, QTableWidgetItem(hmsTimestamp(tms(s.end))))
+            #     self.ui.tbvListing.setItem(i, 2, QTableWidgetItem(s.text))
+            # self.ui.tbvListing.resizeColumnsToContents()
 
         self.currentRecording = 0
         recording = self.audioRecordings[self.currentRecording]
@@ -555,7 +555,6 @@ class MainWindow(QMainWindow):
         if self.audioProject is None or not self.audioRecordings:
             return
 
-        qApp.logger.info(f'Saving recordings...')
         audioProject = self.audioProject
 
         for i, (audioClip, transcript) in enumerate(self.audioRecordings):
@@ -573,8 +572,8 @@ class MainWindow(QMainWindow):
 
     # **************************************************************************
     def clearRecordings(self):
-        self.ui.tbvListing.clear()
-        self.ui.lblRecordings.clear()
+        # self.ui.tbvListing.clear()
+        self.ui.lblRecordingsTitle.clear()
         self.ui.transcript.clear()
 
         self.audioRecordings = []
@@ -592,7 +591,7 @@ class MainWindow(QMainWindow):
     # **************************************************************************
     def onProjectClose(self):
         qApp.logger.info(f"Closing project {self.audioProject.name}({self.audioProject.projectFolder})")
-        self.ui.lblRecordings.setText("")
+        self.ui.lblRecordingsTitle.setText("")
         self.clearRecordings()
 
         self.ui.sbxIndex.setMinimum(0)

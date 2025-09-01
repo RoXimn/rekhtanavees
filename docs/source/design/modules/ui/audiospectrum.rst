@@ -7,19 +7,14 @@
     Author:      RoXimn <roximn@rixir.org>
     ****************************************************************************
 
+:orphan:
+
 ********************************************************************************
-Modules
+``audiospectrum``
 ********************************************************************************
-..  toctree::
-    :maxdepth: 1
+.. automodule:: rekhtanavees.ui.audioSpectrum
+    :members:
 
-    main
-    constants
-    settings
-    audio/index
-    misc/index
-    ui/index
+.. raw:: latex
 
-..  raw:: latex
-
-    \pagebreak
+   \pagebreak

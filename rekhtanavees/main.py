@@ -42,12 +42,12 @@ def _createLogger(dataPath: str) -> logging.Logger:
                 'style': '{',
             },
             'detailed': {
-                'format': '{asctime} [{levelno:02d}] {message}',
+                'format': '{asctime} [{levelname}] {message}',
                 'datefmt': '%Y-%b-%dT%H:%M:%S%z',
                 'style': '{',
             },
             'debuggingDetail': {
-                'format': '{asctime} [{levelno:02d}] {module}.{funcName}[{lineno}]: {message}',
+                'format': '{asctime} [{levelname}] {module}.{funcName}[{lineno}]: {message}',
                 'datefmt': '%Y-%b-%dT%H:%M:%S%z',
                 'style': '{',
             },

@@ -7,19 +7,14 @@
     Author:      RoXimn <roximn@rixir.org>
     ****************************************************************************
 
+:orphan:
+
 ********************************************************************************
-Modules
+``mainwindow``
 ********************************************************************************
-..  toctree::
-    :maxdepth: 1
+.. automodule:: rekhtanavees.ui.mainwindow
+    :members:
 
-    main
-    constants
-    settings
-    audio/index
-    misc/index
-    ui/index
+.. raw:: latex
 
-..  raw:: latex
-
-    \pagebreak
+   \pagebreak
