@@ -120,7 +120,7 @@ def writeSrtFile(fname: str, subtitles: list[Segment]):
     with open(fname, 'w', encoding='utf-8') as f:
         for i, sub in enumerate(subtitles, start=1):
             f.write(f"{i}\n")
-            f.write(f"{hmsTimestamp(int(sub.start * 1000))} --> {hmsTimestamp(int(sub.end * 1000))}\n")
+            f.write(f"{hmsTimestamp(int(sub.start * 1000), srtFormat=True)} --> {hmsTimestamp(int(sub.end * 1000), srtFormat=True)}\n")
             f.write(f"{sub.text}\n\n")
 
 # ******************************************************************************

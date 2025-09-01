@@ -217,7 +217,7 @@ QSpinBox::down-button {
                  </font>
                 </property>
                 <property name="focusPolicy">
-                 <enum>Qt::FocusPolicy::NoFocus</enum>
+                 <enum>Qt::FocusPolicy::WheelFocus</enum>
                 </property>
                 <property name="styleSheet">
                  <string notr="true"/>
@@ -450,6 +450,8 @@ selection-background-color: darkgray;
     <addaction name="actionRecordingRemove"/>
     <addaction name="separator"/>
     <addaction name="actionRecordingClearAll"/>
+    <addaction name="separator"/>
+    <addaction name="actionExportSRT"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuRecordings"/>
@@ -497,6 +499,9 @@ selection-background-color: darkgray;
    <property name="text">
     <string>E&amp;xit</string>
    </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::QuitRole</enum>
+   </property>
   </action>
   <action name="actionAbout">
    <property name="icon">
@@ -511,6 +516,9 @@ selection-background-color: darkgray;
    </property>
    <property name="shortcut">
     <string>F1</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::AboutRole</enum>
    </property>
   </action>
   <action name="actionNew">
@@ -535,6 +543,9 @@ selection-background-color: darkgray;
    </property>
    <property name="text">
     <string>About &amp;Qt</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::AboutQtRole</enum>
    </property>
   </action>
   <action name="actionClearRecent">
@@ -618,6 +629,20 @@ selection-background-color: darkgray;
    </property>
    <property name="shortcut">
     <string>Ctrl+S</string>
+   </property>
+  </action>
+  <action name="actionExportSRT">
+   <property name="icon">
+    <iconset theme="QIcon::ThemeIcon::DocumentSaveAs"/>
+   </property>
+   <property name="text">
+    <string>Export SRT</string>
+   </property>
+   <property name="shortcut">
+    <string>F8</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::ApplicationSpecificRole</enum>
    </property>
   </action>
  </widget>

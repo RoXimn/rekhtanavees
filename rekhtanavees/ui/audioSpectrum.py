@@ -472,7 +472,7 @@ class AudioSpectrumWidget(QWidget):
         if self.direction == Qt.RightToLeft:
             wx = self.width() - wx
         t = self.pix2time(int(wx))
-        self.setToolTip(f"{hmsTimestamp(t)} ({t/1000.0:,.03f}s)")
+        self.setToolTip(f"{hmsTimestamp(t)} ({t / 1000.0:,.03f}s)")
 
     def mousePressEvent(self, e):
         # if e.modifiers() == Qt.NoModifier:

@@ -21,7 +21,7 @@ from PySide6.QtMultimedia import QMediaPlayer, QMediaDevices, QAudioOutput
 from PySide6.QtMultimediaWidgets import QGraphicsVideoItem
 from PySide6.QtWidgets import (
     QMainWindow, QMessageBox, QWidget,
-    QGraphicsScene, QGraphicsTextItem, QStyleOption, QStyle, QTableWidgetItem
+    QGraphicsScene, QGraphicsTextItem, QStyleOption, QStyle, QTableWidgetItem, QFileDialog
 )
 
 from rekhtanavees.misc.utils import hmsTimestamp
@@ -153,6 +153,9 @@ class MainWindow(QMainWindow):
         self.ui.actionOpenSource.triggered.connect(self.onOpenSource)
         self.ui.actionClose.triggered.connect(self.onProjectClose)
         self.ui.actionExit.triggered.connect(self.onExit)
+
+        self.ui.actionExportSRT.triggered.connect(self.onExportSrt)
+
         self.ui.actionAbout.triggered.connect(self.onAbout)
         self.ui.actionAboutQt.triggered.connect(qApp.aboutQt)
 
@@ -270,7 +273,6 @@ class MainWindow(QMainWindow):
             return
 
         self.updateCurrentSegment(idx - 1)
-        self.ui.audioSpectrumArea.audioSpectrum.setFocus()
 
     # **************************************************************************
     def onTogglePlay(self):
@@ -304,7 +306,10 @@ class MainWindow(QMainWindow):
             s = segments[self.currentSegment]
 
             self.ui.transcript.setPlainText(s.text)
-            self.ui.lblSegment.setText(f'{self.currentSegment+1:03}/{len(segments)}')
+            self.ui.lblSegment.setText(
+                f'[E: {hmsTimestamp(s.end*1000.0, shorten=True)}({s.end:,.3f}) - '
+                f'S: {hmsTimestamp(s.start*1000.0, shorten=True)}({s.start:,.3f})] '
+                f'{self.currentSegment+1:03}/{len(segments)}')
 
             self.ui.audioSpectrumArea.audioSpectrum.currentSegmentIndex = self.currentSegment
             self.ui.audioSpectrumArea.showSegment(self.currentSegment)
@@ -392,6 +397,21 @@ class MainWindow(QMainWindow):
         action: QAction = self.sender()  # type: ignore
         if action:
             self.loadAudioProject(action.data())
+
+    # **************************************************************************
+    def onExportSrt(self) -> None:
+        if self.audioProject:
+            filePath, _ = QFileDialog.getSaveFileName(
+                self,'Export SRT',
+                self.audioProject.projectFolder, 'SRT Files (*.srt)')
+            if filePath:
+                try:
+                    writeSrtFile(filePath, self.audioRecordings[self.currentRecording][1])
+                except Exception as e:
+                    qApp.logger.error(f"Failed to export SRT: {e!s}")
+                else:
+                    qApp.logger.info(f"Exported SRT to {filePath}")
+                    self.statusBar().showMessage(f"Exported SRT to {filePath}", 5000)
 
     # **************************************************************************
     def onExit(self) -> None:
@@ -501,8 +521,8 @@ class MainWindow(QMainWindow):
             self.ui.lblRecordingTitle.setText(str(recording[0]))
             self.ui.tbvListing.setRowCount(len(recording[1]))
             for i, s in enumerate(recording[1]):
-                self.ui.tbvListing.setItem(i, 0, QTableWidgetItem(hmsTimestamp(int(s.start*1000))))
-                self.ui.tbvListing.setItem(i, 1, QTableWidgetItem(hmsTimestamp(int(s.end*1000))))
+                self.ui.tbvListing.setItem(i, 0, QTableWidgetItem(hmsTimestamp(int(s.start * 1000))))
+                self.ui.tbvListing.setItem(i, 1, QTableWidgetItem(hmsTimestamp(int(s.end * 1000))))
                 self.ui.tbvListing.setItem(i, 2, QTableWidgetItem(s.text))
             self.ui.tbvListing.resizeColumnsToContents()
 

@@ -25,21 +25,25 @@ FilenameCharLimit: int = 255
 
 
 # ******************************************************************************
-def hmsTimestamp(milliseconds: int, shorten: bool = False, useDays: bool = False) -> str:
+def hmsTimestamp(milliseconds: int, srtFormat: bool = False, shorten: bool = False, useDays: bool = False) -> str:
     """
     Converts milliseconds to timestamp format (HH:MM:SS,ms).
 
     Args:
       milliseconds (int): An integer representing the time in milliseconds.
+      srtFormat (bool): Use comma for millisecond seperator
       shorten (bool): Skip leading empty values.
       useDays (bool): Resolve hours into days
 
     Returns:
-      Timestamp formated as (HH:MM:SS,ms).
+      Timestamp formated as (HH:MM:SS.ms) by default. Alternatively, (HH:MM:SS,ms).
     """
-    seconds, milliseconds = divmod(milliseconds, 1000)
+    seconds, milliseconds = divmod(int(milliseconds), 1000)
     minutes, seconds = divmod(seconds, 60)
     hours, minutes = divmod(minutes, 60)
+    if srtFormat:
+        return f"{hours:02}:{minutes:02}:{seconds:02},{milliseconds:03}"
+
     if useDays:
         days, hours = divmod(hours, 24)
     else:
@@ -54,7 +58,6 @@ def hmsTimestamp(milliseconds: int, shorten: bool = False, useDays: bool = False
         elif minutes:
             timestamp += f"{minutes}:"
         timestamp += f"{seconds + milliseconds / 1000.0}"
-
     elif useDays:
         timestamp = f"{days}d {hours:02}:{minutes:02}:{seconds:02}.{milliseconds:03}"
     else:
