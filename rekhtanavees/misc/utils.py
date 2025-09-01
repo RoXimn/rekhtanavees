@@ -23,9 +23,16 @@ MinimumValidChars: str = "-_.()" + string.ascii_letters + string.digits
 FilenameCharLimit: int = 255
 """Upper limit to filename length."""
 
+# ******************************************************************************
+def tms(x: int | float) -> int:
+    """Convert seconds to milliseconds (int)"""
+    return int(x * 1000)
+
 
 # ******************************************************************************
-def hmsTimestamp(milliseconds: int, srtFormat: bool = False, shorten: bool = False, useDays: bool = False) -> str:
+def hmsTimestamp(milliseconds: int, srtFormat: bool = False,
+                 shorten: bool = False, useDays: bool = False,
+                 fixedPrecision: bool = False) -> str:
     """
     Converts milliseconds to timestamp format (HH:MM:SS,ms).
 
@@ -34,6 +41,7 @@ def hmsTimestamp(milliseconds: int, srtFormat: bool = False, shorten: bool = Fal
       srtFormat (bool): Use comma for millisecond seperator
       shorten (bool): Skip leading empty values.
       useDays (bool): Resolve hours into days
+      fixedPrecision (bool): Use fixed precision for milliseconds
 
     Returns:
       Timestamp formated as (HH:MM:SS.ms) by default. Alternatively, (HH:MM:SS,ms).
@@ -41,6 +49,7 @@ def hmsTimestamp(milliseconds: int, srtFormat: bool = False, shorten: bool = Fal
     seconds, milliseconds = divmod(int(milliseconds), 1000)
     minutes, seconds = divmod(seconds, 60)
     hours, minutes = divmod(minutes, 60)
+
     if srtFormat:
         return f"{hours:02}:{minutes:02}:{seconds:02},{milliseconds:03}"
 
@@ -57,7 +66,12 @@ def hmsTimestamp(milliseconds: int, srtFormat: bool = False, shorten: bool = Fal
             timestamp += f"{hours}:{minutes}:"
         elif minutes:
             timestamp += f"{minutes}:"
-        timestamp += f"{seconds + milliseconds / 1000.0}"
+
+        if fixedPrecision:
+            timestamp += f"{seconds + milliseconds / 1000.0:.3f}"
+        else:
+            timestamp += f"{round(seconds + milliseconds / 1000.0, 3)}"
+
     elif useDays:
         timestamp = f"{days}d {hours:02}:{minutes:02}:{seconds:02}.{milliseconds:03}"
     else:
