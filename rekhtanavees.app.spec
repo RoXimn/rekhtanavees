@@ -6,12 +6,17 @@
 #
 # Author:      RoXimn <roximn@rixir.org>
 # ******************************************************************************
+from pathlib import Path
+
 block_cipher = None
 
+rootFolder = Path(__name__).parent.resolve()
+
 a = Analysis(['rekhtanavees/main.py'],
-             pathex=[],
+             pathex=[rootFolder, rootFolder / "rekhtanavees"],
              binaries=None,
              datas=[],
+             # hiddenimports=['rekhtanavees.audio, rekhtanavees.misc, rekhtanavees.ui'],
              hiddenimports=[],
              hookspath=None,
              hooksconfig=None,

@@ -5,6 +5,6 @@ cd docs
 call make html
 cd ..
 
-pyinstaller rekhtanavees.app.spec
+pyinstaller --clean --noconfirm rekhtanavees.app.spec
 
 %INNOSETUP_DIR%\ISCC.exe installer\rekhtanavees-installer.iss
