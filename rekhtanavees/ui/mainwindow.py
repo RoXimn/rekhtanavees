@@ -308,10 +308,11 @@ class MainWindow(QMainWindow):
             self.ui.transcript.setPlainText(s.text)
             self.ui.lblSegment.setText(
                 f'[E: {hmsTimestamp(s.end*1000.0, shorten=True)}({s.end:,.3f}) - '
-                f'S: {hmsTimestamp(s.start*1000.0, shorten=True)}({s.start:,.3f})] '
+                f'S: {hmsTimestamp(s.start*1000.0, shorten=True)}({s.start:,.3f}), '
+                f'\u0394{int((s.end-s.start)*1000.0):,}ms] '
                 f'{self.currentSegment+1:03}/{len(segments)}')
 
-            self.ui.audioSpectrumArea.audioSpectrum.currentSegmentIndex = self.currentSegment
+            self.ui.audioSpectrumArea.audioSpectrum.currentSegment = self.currentSegment
             self.ui.audioSpectrumArea.showSegment(self.currentSegment)
 
     # **************************************************************************
@@ -487,7 +488,7 @@ class MainWindow(QMainWindow):
     # **************************************************************************
     def updateCurrentSegment(self, idx: int):
         segments = self.audioRecordings[self.currentRecording][1]
-        self.currentSegment = self.currentSegment = max(min(len(segments) - 1, idx), 0)
+        self.currentSegment = max(min(len(segments) - 1, idx), 0)
         self.displayCurrentSegment()
 
     # **************************************************************************
@@ -601,6 +602,8 @@ class MainWindow(QMainWindow):
 
         self.ui.btnPlay.setDisabled(True)
         self.ui.cbxLoop.setDisabled(True)
+
+        self.ui.lblSegment.setText("")
 
         self.autoSaveTimer.stop()
         self.statusBar().showMessage(f"AutosaveTimer: {self.autoSaveTimer.isActive()}", 5000)

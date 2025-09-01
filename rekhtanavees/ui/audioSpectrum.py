@@ -299,17 +299,17 @@ class AudioSpectrumWidget(QWidget):
 
     @property
     def currentSegment(self) -> int:
-        return self.currentSegmentIndex
+        return self._currentIndex
 
     @currentSegment.setter
     def currentSegment(self, index: int):
         if self.segments and 0 <= index < len(self.segments):
-            self.currentSegmentIndex = index
+            self._currentIndex = index
             s: Segment = self.segments[index]
             self.start = int(s.start * 1000.0)
             self.end = int(s.end * 1000.0)
         else:
-            self.currentSegmentIndex = -1
+            self._currentIndex = -1
             self.start = 0
             self.end = 0
 
@@ -384,15 +384,15 @@ class AudioSpectrumWidget(QWidget):
                 if not viewBox.intersects(segmentBox):
                     continue
 
-                painter.fillRect(segmentBox, _TextBoxBrush if self.currentSegmentIndex != i else _SelectedBoxBrush)
-                painter.setPen(_TextBoxBorder if self.currentSegmentIndex != i else _SelectedBoxBorder)
+                painter.fillRect(segmentBox, _TextBoxBrush if self._currentIndex != i else _SelectedBoxBrush)
+                painter.setPen(_TextBoxBorder if self._currentIndex != i else _SelectedBoxBorder)
                 # painter.drawRect(segmentBox)
                 painter.drawLine(segmentBox.topRight(), segmentBox.bottomRight())
                 painter.drawLine(segmentBox.topLeft(), segmentBox.bottomLeft())
 
                 # if the segment box is too small, replace with an elide string/character
                 if segmentBox.width() >= _MinTextWidth:
-                    painter.setPen(_SelectedTextColor if self.currentSegmentIndex == i else _TextColor)
+                    painter.setPen(_SelectedTextColor if self._currentIndex == i else _TextColor)
                     painter.setFont(_TextFont)
                     if self.direction == Qt.LeftToRight:
                         painter.drawText(segmentBox, Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter, segment.text)
