@@ -7,18 +7,14 @@
     Author:      RoXimn <roximn@rixir.org>
     ****************************************************************************
 
+:orphan:
+
 ********************************************************************************
-``audio``
+``audiorenderer``
 ********************************************************************************
-..  toctree::
-    :maxdepth: 1
+.. automodule:: rekhtanavees.audio.audiorenderer
+    :members:
 
-    audioclip
-    audiorenderer
-    spectra
-    audioproject
-    transcript
+.. raw:: latex
 
-..  raw:: latex
-
-    \pagebreak
+   \pagebreak

@@ -10,10 +10,11 @@
 :orphan:
 
 ********************************************************************************
-``clipimage``
+``transcript``
 ********************************************************************************
-.. automodule:: rekhtanavees.audio.clipimage
+.. automodule:: rekhtanavees.audio.transcript
     :members:
+    :undoc-members:
 
 .. raw:: latex
 
