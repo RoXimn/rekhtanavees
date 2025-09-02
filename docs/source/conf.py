@@ -7,7 +7,7 @@
 # ******************************************************************************
 
 project = 'Rekhta Navees'
-copyright = '2024, RoXimn'
+copyright = '2025, RoXimn'
 author = 'RoXimn'
 release: str = '0.1.0a'
 master_doc: str = 'index'
@@ -29,7 +29,6 @@ extensions: list[str] = [
 ]
 napoleon_google_docstring = True
 
-
 source_suffix: str = '.rst'
 todo_include_todos: bool = True
 
@@ -48,7 +47,7 @@ autodoc_pydantic_model_member_order = 'alphabetical'
 html_theme = 'sphinx_book_theme'
 html_theme_options = {
     'navigation_with_keys': False,
-    "repository_url": "https://github.com/RoXimn/mollana",
+    "repository_url": "https://github.com/RoXimn/rekhtanavees",
     "use_repository_button": True,
 }
 

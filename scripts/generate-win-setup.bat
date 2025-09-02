@@ -2,6 +2,7 @@
 set INNOSETUP_DIR="C:\Program Files (x86)\Inno Setup 6"
 
 cd docs
+call make clean
 call make html
 cd ..
 
