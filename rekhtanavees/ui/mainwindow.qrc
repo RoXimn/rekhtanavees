@@ -1,5 +1,7 @@
 <RCC>
   <qresource prefix="images">
+    <file>icons/view-list-details.png</file>
+    <file>icons/document-save-all.png</file>
     <file>icons/view-refresh.png</file>
     <file>icons/circle-chevron-left.png</file>
     <file>icons/circle-chevron-right.png</file>

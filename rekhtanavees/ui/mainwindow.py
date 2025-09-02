@@ -148,7 +148,6 @@ class MainWindow(QMainWindow):
         self.ui.actionNew.triggered.connect(self.onNew)
         self.ui.actionOpen.triggered.connect(self.onOpen)
         self.ui.actionSave.triggered.connect(self.onSave)
-        self.ui.actionOpenSource.triggered.connect(self.onOpenSource)
         self.ui.actionClose.triggered.connect(self.onProjectClose)
         self.ui.actionExit.triggered.connect(self.onExit)
 
@@ -233,8 +232,29 @@ class MainWindow(QMainWindow):
         self.ui.tbvListing.setModel(self.recordingsModel)
         self.ui.tbvListing.doubleClicked.connect(self.onListingDoubleClick)
 
-        self.clearRecordings()
+        self.ui.actionDetails.setChecked(False)
+        self.ui.dckProjectDetails.setHidden(True)
+        self.ui.leAuthorName.textChanged.connect(self.updateAuthorName)
+        self.ui.leAuthorEmail.textChanged.connect(self.updateAuthorEmail)
+        self.ui.tbxDescription.textChanged.connect(self.updateDescription)
+
+        self.clearRecordingsUi()
         self.setRecordingUiEnabled(False)
+
+    # **************************************************************************
+    def setProjectUiEnabled(self, enabled: bool):
+        if enabled:
+            self.ui.actionSave.setEnabled(True)
+            self.ui.actionClose.setEnabled(True)
+
+            self.ui.actionDetails.setEnabled(True)
+            self.ui.dckProjectDetailsContents.setEnabled(True)
+        else:
+            self.ui.actionSave.setDisabled(True)
+            self.ui.actionClose.setDisabled(True)
+
+            self.ui.actionDetails.setDisabled(True)
+            self.ui.dckProjectDetailsContents.setDisabled(True)
 
     # **************************************************************************
     def setRecordingUiEnabled(self, enabled: bool):
@@ -248,10 +268,9 @@ class MainWindow(QMainWindow):
             self.ui.btnPlay.setEnabled(True)
             self.ui.cbxLoop.setEnabled(True)
 
-            self.ui.actionSave.setEnabled(True)
-            self.ui.actionClose.setEnabled(True)
             self.ui.menuRecordings.setEnabled(True)
             self.ui.recordingToolBar.setVisible(True)
+            self.ui.actionExportSRT.setEnabled(True)
 
             self.ui.videoView.setEnabled(True)
             self.ui.tbvListing.setEnabled(True)
@@ -266,14 +285,29 @@ class MainWindow(QMainWindow):
             self.ui.btnPlay.setDisabled(True)
             self.ui.cbxLoop.setDisabled(True)
 
-            self.ui.actionSave.setDisabled(True)
-            self.ui.actionClose.setDisabled(True)
             self.ui.menuRecordings.setDisabled(True)
             self.ui.recordingToolBar.setHidden(True)
+            self.ui.actionExportSRT.setEnabled(True)
 
             self.ui.videoView.setDisabled(True)
             self.ui.tbvListing.setDisabled(True)
             self.ui.transcript.setDisabled(True)
+
+    # **************************************************************************
+    def updateDescription(self):
+        if self.audioProject:
+            text = self.ui.tbxDescription.toPlainText()
+            self.audioProject.description = text
+
+    # **************************************************************************
+    def updateAuthorName(self):
+        if self.audioProject:
+            self.audioProject.authorName = self.ui.leAuthorName.text()
+
+    # **************************************************************************
+    def updateAuthorEmail(self):
+        if self.audioProject:
+            self.audioProject.authorEmail = self.ui.leAuthorEmail.text()
 
     # **************************************************************************
     def updateTranscriptSegment(self):
@@ -433,13 +467,13 @@ class MainWindow(QMainWindow):
                 QTimer.singleShot(1000, self.playSegment)
 
     # **************************************************************************
-    def onOpenSource(self) -> None:
+    # def onOpenSource(self) -> None:
         # pdf = fitz.open(r'C:\Users\driyo\Documents\qtextlayout.h.pdf')
         # pg = pdf[0]
         # px = pg.get_pixmap(dpi=300, alpha=False)
         # img = QImage(px.samples, px.width, px.height, px.stride, QImage.Format_RGB888)
         # self.ui.transcriptionSource.setImage(img)
-        self.playSegment()
+        # self.playSegment()
 
     # **************************************************************************
     def onOpenRecent(self) -> None:
@@ -464,7 +498,7 @@ class MainWindow(QMainWindow):
 
     # **************************************************************************
     def onExit(self) -> None:
-        self.clearRecordings()
+        self.onProjectClose()
         self.close()
 
     # **************************************************************************
@@ -552,7 +586,7 @@ class MainWindow(QMainWindow):
         self.setWindowFilePath(str(projectFilename))
         self.adjustRecentListForCurrent(projectFilename)
 
-        self.clearRecordings()
+        self.clearRecordingsUi()
         self.ui.actionClose.setEnabled(False)
 
         projectFolder: Path = projectFilename.parent
@@ -569,36 +603,56 @@ class MainWindow(QMainWindow):
         audioProject.title = projectFilename.stem
         audioProject.loadProject()
 
-        for recording in audioProject.recordings:
-            ac = AudioClip.createAudioClip(projectFolder / recording.audioFile)
-            ts = loadTranscript(projectFolder / recording.transcriptFile)
-            vid = QUrl.fromLocalFile(projectFolder / recording.videoFile) if recording.hasVideo() else QUrl()
-            self.audioRecordings.append((ac, ts, vid))
-
-        t1 = timer.elapsed()
-        timer.restart()
-
         self.audioProject = audioProject
-        self.ui.lblRecordingsTitle.setText(f'Audio Recordings: <b>{self.audioProject.title}</b> [{len(self.audioProject.recordings)}]')
-        for recording in self.audioRecordings:
-            self.ui.lblRecordingsTitle.setText(str(recording[0]))
 
-        self.currentRecording = 0
-        recording = self.audioRecordings[self.currentRecording]
-        self.audioPlayer.setSource(QUrl.fromLocalFile(projectFolder / audioProject.recordings[self.currentRecording].audioFile))
-        self.ui.audioSpectrumArea.audioSpectrum.setSource(recording[0], recording[1])
-        self.recordingsModel.setSegments(self.audioRecordings[self.currentRecording][1])
-        self.ui.tbvListing.resizeColumnsToContents()
+        self.ui.leProjectTitle.setText(self.audioProject.title)
+        self.ui.leProjectFolder.setText(self.audioProject.folder)
+        self.ui.leCreation.setText(f"{self.audioProject.createdOn!s}")
+        self.ui.leAuthorName.setText(self.audioProject.authorName)
+        self.ui.leAuthorEmail.setText(self.audioProject.authorEmail)
+        self.ui.tbxDescription.setPlainText(self.audioProject.description)
 
-        self.currentSegment = 0
-        self.displayCurrentSegment()
+        self.setProjectUiEnabled(True)
 
-        self.videoPlayer.setSource(self.audioRecordings[self.currentRecording][2])
-        self.ui.lblCurrentPosition.setText(hmsTimestamp(0, shorten=True, fixedPrecision=True))
-        self.ui.lblTotalLength.setText(hmsTimestamp(len(recording[0]), shorten=True, fixedPrecision=True))
-        self.setRecordingUiEnabled(True)
+        if self.audioProject.hasRecordings():
+            for recording in audioProject.recordings:
+                ac = AudioClip.createAudioClip(projectFolder / recording.audioFile)
+                ts = loadTranscript(projectFolder / recording.transcriptFile)
+                vid = QUrl.fromLocalFile(projectFolder / recording.videoFile) if recording.hasVideo() else QUrl()
+                self.audioRecordings.append((ac, ts, vid))
 
-        t2 = timer.elapsed()
+            t1 = timer.elapsed()
+            timer.restart()
+
+            self.ui.lblRecordingsTitle.setText(f'Audio Recordings: <b>{self.audioProject.title}</b> [{len(self.audioProject.recordings)}]')
+            # for recording in self.audioRecordings:
+            #     self.ui.lblRecordingsTitle.setText(str(recording[0]))
+
+            self.currentRecording = 0
+            recording = self.audioRecordings[self.currentRecording]
+            self.audioPlayer.setSource(QUrl.fromLocalFile(projectFolder / audioProject.recordings[self.currentRecording].audioFile))
+            self.ui.audioSpectrumArea.audioSpectrum.setSource(recording[0], recording[1])
+            self.recordingsModel.setSegments(self.audioRecordings[self.currentRecording][1])
+            self.ui.tbvListing.resizeColumnsToContents()
+
+            self.currentSegment = 0
+            self.displayCurrentSegment()
+
+            self.videoPlayer.setSource(self.audioRecordings[self.currentRecording][2])
+            self.ui.lblCurrentPosition.setText(hmsTimestamp(0, shorten=True, fixedPrecision=True))
+            self.ui.lblTotalLength.setText(hmsTimestamp(len(recording[0]), shorten=True, fixedPrecision=True))
+
+            self.setRecordingUiEnabled(True)
+
+            t2 = timer.elapsed()
+        else:
+            t1 = timer.elapsed()
+            timer.restart()
+
+            self.clearRecordingsUi()
+            self.setRecordingUiEnabled(False)
+
+            t2 = timer.elapsed()
 
         self.autoSaveTimer.start(RSettings().Main.AutoSaveInterval * 60 * 1000)
         self.statusBar().showMessage(f'Loaded project {audioProject.name}({audioProject.projectFolder})', 3000)
@@ -613,21 +667,31 @@ class MainWindow(QMainWindow):
 
         audioProject = self.audioProject
 
-        for i, (audioClip, transcript) in enumerate(self.audioRecordings):
+        for i, (audioClip, transcript, video) in enumerate(self.audioRecordings):
             transcriptFile = audioProject.projectFolder / audioProject.recordings[i].transcriptFile
             qApp.logger.info(f'Saving {transcriptFile.resolve()}')
 
             # Save the transcript file
             saveTranscript(transcriptFile, transcript)
 
-            # Save the SRT file
-            srtFile = transcriptFile.with_suffix('.srt')
-            writeSrtFile(srtFile, transcript)
+            # TODO: Add config option to SRT export
+            # Save the SRT file if automatic export to SRT is selected
+            # srtFile = transcriptFile.with_suffix('.srt')
+            # writeSrtFile(srtFile, transcript)
 
         self.statusBar().showMessage(f'Saved project {audioProject.name}({audioProject.projectFolder})', 3000)
 
     # **************************************************************************
-    def clearRecordings(self):
+    def clearProjectUi(self):
+        self.ui.leProjectTitle.clear()
+        self.ui.leProjectFolder.clear()
+        self.ui.leCreation.clear()
+        self.ui.leAuthorName.clear()
+        self.ui.leAuthorEmail.clear()
+        self.ui.tbxDescription.clear()
+
+    # **************************************************************************
+    def clearRecordingsUi(self):
         self.ui.lblRecordingsTitle.setText("")
         self.ui.lblSegment.setText("")
         self.ui.lblCurrentPosition.setText("--:--")
@@ -648,13 +712,22 @@ class MainWindow(QMainWindow):
 
     # **************************************************************************
     def onSave(self):
-        self.saveRecordings()
+        if self.audioProject:
+            self.audioProject.saveProject()
+            self.saveRecordings()
 
     # **************************************************************************
     def onProjectClose(self):
+        # TODO: Check unsaved data before exit
+
         qApp.logger.info(f"Closing project {self.audioProject.name}({self.audioProject.projectFolder})")
-        self.clearRecordings()
+        self.clearRecordingsUi()
+        self.audioRecordings = []
         self.setRecordingUiEnabled(False)
+
+        self.clearProjectUi()
+        self.audioProject = None
+        self.setProjectUiEnabled(False)
 
         self.autoSaveTimer.stop()
         self.statusBar().showMessage(f"AutosaveTimer: {self.autoSaveTimer.isActive()}", 5000)

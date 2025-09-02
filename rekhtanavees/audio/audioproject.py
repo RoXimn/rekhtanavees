@@ -7,17 +7,14 @@
 #
 # Author:      RoXimn <roximn@rixir.org>
 # ******************************************************************************
-import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from enum import auto
 from pathlib import Path
-from typing import Optional, List, Annotated
 
 import tomlkit
 from pydantic import (
-    BaseModel, Field, EmailStr, FilePath, ValidationError,
-    StringConstraints
+    BaseModel, FilePath
 )
 from strenum import StrEnum
 from tomlkit.exceptions import TOMLKitError
@@ -77,7 +74,7 @@ class AudioProject:
         self.originator: str = ''
         self.email: str = ''
         self.narrative: str = ''
-        self.createdOn: datetime = datetime.now(timezone.utc)
+        self.createdOn: datetime = datetime.now(UTC)
         self.lastSavedOn: datetime = self.createdOn
         self.recordings: list[Recording] = []
         self.isModified = True
@@ -181,6 +178,10 @@ class AudioProject:
         return bool(prjFilename) and Path(prjFilename).exists()
 
     # **************************************************************************
+    def hasRecordings(self) -> bool:
+        return bool(self.recordings) and len(self.recordings) > 0
+
+    # **************************************************************************
     def loadProject(self) -> None:
         projectFile: str = self.projectFilename()
         if not self.projectFileExists():
@@ -218,7 +219,7 @@ class AudioProject:
                 tdoc = self.renderProjectToToml()
 
         # update last saved time
-        tdoc['general']['lastSavedOn']: datetime.now(tz=timezone.utc)
+        tdoc['general']['lastSavedOn']: datetime.now(UTC)
         try:
             with projectFilePath.open(mode='wb+') as tomlFile:
                 tomlFile.write(tomlkit.dumps(tdoc).encode('utf-8'))
@@ -280,7 +281,7 @@ class AudioProject:
         assert self.email != '', 'Author email not provided'
         general['authorEmail'] = self.email
         if self.narrative:
-            general.add('description', self.narrative)
+            general.add('description', tomlkit.string(f'\n{self.narrative}\n', multiline=True))
         general.add('createdOn', self.createdOn).add('lastSavedOn', self.lastSavedOn)
         tdoc.add('general', general)
         tdoc.add(tomlkit.nl()).add(tomlkit.comment("*" * 78))
@@ -310,7 +311,7 @@ class AudioProject:
         assert self.email != '', 'Author email not provided'
         general['authorEmail'] = self.email
         if self.narrative:
-            general['description'] = self.narrative
+            general['description'] = tomlkit.string(f'\n{self.narrative}\n', multiline=True)
         elif 'description' in general:
             general.pop('description')
         general['createdOn'] = self.createdOn
