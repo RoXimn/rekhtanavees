@@ -11,7 +11,10 @@ import re
 from pathlib import Path
 from typing import List
 
-from PySide6.QtCore import QUrl, Qt, QTimer, QPoint, QEvent, QSize, QElapsedTimer, QModelIndex
+from PySide6.QtCore import (
+    QUrl, Qt, QTimer, QPoint, QEvent, QSize, QElapsedTimer, QModelIndex,
+    QItemSelectionModel
+)
 from PySide6.QtGui import (
     QAction, QIcon, QKeyEvent, QPainter, QBrush,
     QColor, QResizeEvent, QFont, QTextOption, QFontMetrics, QFontDatabase,
@@ -212,7 +215,6 @@ class MainWindow(QMainWindow):
 
         self.videoPlayer = QMediaPlayer()
         self.videoPlayer.setVideoOutput(self.videoItem)
-        self.videoPlayer.setSource(QUrl("file:///D:/tools/urdu-youtube/ertugrul-ghazi/downloads/S01E01.mp4"))
         self.ui.playSlider.setEnabled(False)
 
         self.audioOutput = QAudioOutput(QMediaDevices.defaultAudioOutput())
@@ -253,10 +255,8 @@ class MainWindow(QMainWindow):
 
             self.ui.videoView.setEnabled(True)
             self.ui.tbvListing.setEnabled(True)
+            self.ui.transcript.setEnabled(True)
         else:
-            self.ui.videoView.setDisabled(True)
-            self.ui.tbvListing.setDisabled(True)
-
             self.ui.sbxIndex.setMinimum(0)
             self.ui.sbxIndex.setMaximum(0)
             self.ui.sbxIndex.setSuffix("")
@@ -270,6 +270,10 @@ class MainWindow(QMainWindow):
             self.ui.actionClose.setDisabled(True)
             self.ui.menuRecordings.setDisabled(True)
             self.ui.recordingToolBar.setHidden(True)
+
+            self.ui.videoView.setDisabled(True)
+            self.ui.tbvListing.setDisabled(True)
+            self.ui.transcript.setDisabled(True)
 
     # **************************************************************************
     def updateTranscriptSegment(self):
@@ -340,6 +344,11 @@ class MainWindow(QMainWindow):
 
             self.ui.tbvListing.selectRow(self.currentSegment)
             idx = self.recordingsModel.index(self.currentSegment, 0)
+            self.ui.tbvListing.selectionModel().select(
+                idx,
+                QItemSelectionModel.ClearAndSelect |
+                QItemSelectionModel.SelectionFlag.Rows
+            )
             self.ui.tbvListing.scrollTo(idx)
 
             if self.audioPlayer.playbackState() == QMediaPlayer.PlayingState:
@@ -563,7 +572,8 @@ class MainWindow(QMainWindow):
         for recording in audioProject.recordings:
             ac = AudioClip.createAudioClip(projectFolder / recording.audioFile)
             ts = loadTranscript(projectFolder / recording.transcriptFile)
-            self.audioRecordings.append((ac, ts))
+            vid = QUrl.fromLocalFile(projectFolder / recording.videoFile) if recording.hasVideo() else QUrl()
+            self.audioRecordings.append((ac, ts, vid))
 
         t1 = timer.elapsed()
         timer.restart()
@@ -583,6 +593,7 @@ class MainWindow(QMainWindow):
         self.currentSegment = 0
         self.displayCurrentSegment()
 
+        self.videoPlayer.setSource(self.audioRecordings[self.currentRecording][2])
         self.ui.lblCurrentPosition.setText(hmsTimestamp(0, shorten=True, fixedPrecision=True))
         self.ui.lblTotalLength.setText(hmsTimestamp(len(recording[0]), shorten=True, fixedPrecision=True))
         self.setRecordingUiEnabled(True)
@@ -621,6 +632,9 @@ class MainWindow(QMainWindow):
         self.ui.lblSegment.setText("")
         self.ui.lblCurrentPosition.setText("--:--")
         self.ui.lblTotalLength.setText("--:--")
+
+        self.videoPlayer.setSource(QUrl())
+        self.audioPlayer.setSource(QUrl())
 
         self.ui.transcript.clear()
         self.ui.audioSpectrumArea.audioSpectrum.setSource(None, None)

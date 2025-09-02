@@ -61,119 +61,11 @@ class Recording(BaseModel):
     """Filename of the recorded audio clip, path relative to the project file"""
     transcriptFile: FilePath
     """Filename of the transcribed text file, path relative to the project file"""
+    videoFile: FilePath | None = None
+    """Optional filename of the associated video file, path relative to the project file"""
 
-
-# ******************************************************************************
-class ProjectInfo(BaseModel):
-    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3,
-                                            max_length=255, pattern='^[A-Za-z0-9 _-]+$')]
-    authorName: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3)]
-    authorEmail: EmailStr
-    description: Annotated[str, StringConstraints(strip_whitespace=True)] = Field(default='')
-    speakers: Optional[List[Speaker]] | None = None
-    createdOn: datetime = Field(default=datetime.now(Rx.Timezone), frozen=True)
-
-
-# ******************************************************************************
-def createProjectToml() -> tomlkit.TOMLDocument:
-    """Create a de novo project document in TOML format"""
-    tdoc = tomlkit.TOMLDocument()
-    seperator = tomlkit.comment("*" * 78)
-
-    # Header Section
-    (tdoc
-     .add(seperator)
-     .add(tomlkit.comment(f"{Rx.ApplicationName} audio project"))
-     .add(tomlkit.comment(f'Application version: {Rx.ApplicationVersion!s}'))
-     .add(tomlkit.nl()))
-
-    tdoc['general'] = tomlkit.table()
-    tdoc['recordings'] = tomlkit.aot()
-
-    # Footer
-    tdoc.add(seperator)
-
-    return tdoc
-
-
-# ******************************************************************************
-class NaveesProject(BaseModel):
-    projectFile: FilePath
-    info: ProjectInfo
-    clips: List[Recording] = []
-    isModified: bool = False
-
-    def generateFilename(self, folder: str) -> str:
-        """Generate a filename at given directory from project title"""
-        return str((Path(folder) / f'{slugify(self.info.title)}.toml').resolve())
-
-    def exists(self) -> bool:
-        """Project file exists or not"""
-        return self.projectFile is not None
-
-    def save(self):
-        """Write current configuration to file.
-
-        The current configuration file is loaded and updated. The overhead of loading
-        everytime for saving should be small.
-
-        Raises:
-            ValueError: If the configuration file does not exist and
-                `denovo` is `False`.
-        """
-        log = logging.getLogger(Rx.ApplicationName)
-        try:
-            tdoc: tomlkit.TOMLDocument = tomlkit.loads(self.projectFile.read_text(encoding='utf-8'))
-        except TOMLKitError as e:
-            log.warning(f'Error decoding {self.projectFile!s}: {e!s}')
-            log.debug('Resetting the toml document...')
-            tdoc = createProjectToml()
-
-        tdoc['general'] = tomlkit.item(self.info.model_dump(exclude_none=True))
-
-        # Recordings list Section
-        recordings = tdoc['recordings'] if 'recordings' in tdoc else tomlkit.aot()
-        for _, clip in enumerate(self.clips):
-            c = clip.model_dump(exclude_none=True)
-            i = tomlkit.item(c)
-            recordings.append(i)
-        tdoc['recordings'] = recordings
-
-        # Write toml file
-        self.projectFile.write_text(tomlkit.dumps(tdoc))
-        log.debug(f'Project file saved. ({self.projectFile.resolve()!s})')
-
-
-# ******************************************************************************
-def loadProject(filename: str) -> NaveesProject:
-    assert isinstance(filename, str)
-    filePath = Path(filename)
-    if not filePath.is_file():
-        raise AudioProjectException(f'Loading non-existent project file {filename}')
-
-    try:
-        tdoc: tomlkit.TOMLDocument = tomlkit.loads(filePath.read_text(encoding='utf-8'))
-    except TOMLKitError as e:
-        raise AudioProjectException(f'{e!s} in {filename}')
-
-    try:
-        info = ProjectInfo.model_validate(tdoc['general'])
-    except ValidationError as ve:
-        raise AudioProjectException(str(ve))
-
-    clips = []
-    if 'recordings' in tdoc:
-        # Change working directory so that file paths can be validated
-        # by pydantic, relative of it.
-        os.chdir(filePath.parent)
-
-        for i, record in enumerate(tdoc['recordings']):
-            try:
-                clips.append(Recording.model_validate(record))
-            except ValidationError as ve:
-                raise AudioProjectException(f'Error at {i}: {str(ve)}')
-
-    return NaveesProject(projectFile=filePath, info=info, clips=clips)
+    def hasVideo(self) -> bool:
+        return self.videoFile is not None
 
 
 # ******************************************************************************
@@ -358,8 +250,10 @@ class AudioProject:
             for i, record in enumerate(tdoc['recordings']):  # type: ignore
                 assert 'audioFile' in record, f'"audioFile" key is absent in recording #{i}'
                 assert 'transcriptFile' in record, f'"transcriptFile" key is absent in recording #{i}'
+                videoFile = Path(record['videoFile']) if 'videoFile' in record else None
                 recording = Recording(audioFile=Path(record['audioFile']),
-                                      transcriptFile=Path(record['transcriptFile']))
+                                      transcriptFile=Path(record['transcriptFile']),
+                                      videoFile=videoFile)
 
                 self.recordings.append(recording)
 
@@ -398,6 +292,7 @@ class AudioProject:
                 tomlkit.table()
                 .add('audioFile', str(record.audioFile))
                 .add('transcriptFile', str(record.transcriptFile))
+                .add('videoFile', str(record.videoFile))
             )
         tdoc.add('recordings', recordings)
         tdoc.add(tomlkit.nl()).add(tomlkit.comment("*" * 78))
@@ -429,7 +324,8 @@ class AudioProject:
         for i, record in enumerate(recordingsToUpdate):
             recordings[i].update({
                 'audioFile': str(record.audioFile),
-                'transcriptFile': str(record.transcriptFile)
+                'transcriptFile': str(record.transcriptFile),
+                'videoFile': str(record.videoFile)
             })
         if hasMore:
             for i, record in enumerate(self.recordings[r:]):
@@ -437,22 +333,11 @@ class AudioProject:
                     tomlkit.table()
                     .add('audioFile', str(record.audioFile))
                     .add('transcriptFile', str(record.transcriptFile))
+                    .add('videoFile', str(record.videoFile))
                 )
         else:
             del recordings[R:]
         tdoc['recordings'] = recordings
 
-
-# ******************************************************************************
-if __name__ == '__main__':
-    f = Path(r"C:\Users\driyo\Documents\test\abc\abc.toml")
-    p = loadProject(str(f))
-    print(p.model_dump())
-    os.chdir(f.parent)
-    for i in range(1, 4):
-        r = Recording(audioFile=f'rec{i}.wav', transcriptFile=f'txt{i}.txt')
-        p.clips.append(r)
-    print(p.model_dump())
-    p.save()
 
 # ******************************************************************************

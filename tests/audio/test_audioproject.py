@@ -33,29 +33,32 @@ def touchFiles(folder: str, files: list[str]) -> None:
 
 # ******************************************************************************
 class TestNaveesProject:
-    PROJECT_TOML = ('# Rekhta Navees audio project file.\n'
-                    '\n'
-                    'RekhtaNaveesVersion = "0.1"\n'
-                    '\n'
-                    '[general]\n'
-                    'title = "Lmnop Qrst"\n'
-                    'authorName = "Abcdef"\n'
-                    'authorEmail = "abcdef@gmail.com"\n'
-                    'description = "A description of the project"\n'
-                    'createdOn = 1979-05-27T00:32:00-07:00\n'
-                    'lastSavedOn = 1979-05-27T00:32:00+07:00\n'
-                    '\n'
-                    '[[recordings]]\n'
-                    'audioFile = "recording001.flac"\n'
-                    'transcriptFile = "recording001.txt"\n'
-                    '\n'
-                    '[[recordings]]\n'
-                    'audioFile = "recording002.flac"\n'
-                    'transcriptFile = "recording002.txt"\n'
-                    '\n'
-                    '[[recordings]]\n'
-                    'audioFile = "recording003.flac"\n'
-                    'transcriptFile = "recording003.txt"\n')
+    PROJECT_TOML = (
+        '# Rekhta Navees audio project file.\n'
+        '\n'
+        'RekhtaNaveesVersion = "0.1"\n'
+        '\n'
+        '[general]\n'
+        'title = "Lmnop Qrst"\n'
+        'authorName = "Abcdef"\n'
+        'authorEmail = "abcdef@gmail.com"\n'
+        'description = "A description of the project"\n'
+        'createdOn = 1979-05-27T00:32:00-07:00\n'
+        'lastSavedOn = 1979-05-27T00:32:00+07:00\n'
+        '\n'
+        '[[recordings]]\n'
+        'audioFile = "recording001.flac"\n'
+        'transcriptFile = "recording001.txt"\n'
+        'videoFile = "video001.mp4"\n'
+        '\n'
+        '[[recordings]]\n'
+        'audioFile = "recording002.flac"\n'
+        'transcriptFile = "recording002.txt"\n'
+        '\n'
+        '[[recordings]]\n'
+        'audioFile = "recording003.flac"\n'
+        'transcriptFile = "recording003.txt"\n'
+    )
 
     # **************************************************************************
     @pytest.fixture(scope="session")
@@ -68,7 +71,8 @@ class TestNaveesProject:
         tdoc: tomlkit.TOMLDocument = tomlkit.loads(self.PROJECT_TOML)
         a = [rec['audioFile'] for rec in tdoc['recordings']]
         t = [rec['transcriptFile'] for rec in tdoc['recordings']]
-        touchFiles(str(folder), a + t)
+        v = [rec['videoFile'] for rec in tdoc['recordings'] if 'videoFile' in rec]
+        touchFiles(str(folder), a + t + v)
 
         return tomlPath
 
@@ -88,12 +92,13 @@ class TestNaveesProject:
 
         a = [rec['audioFile'] for rec in tdoc['recordings']]
         t = [rec['transcriptFile'] for rec in tdoc['recordings']]
-        touchFiles(audioProject.folder, a + t)
+        v = [rec['videoFile'] for rec in tdoc['recordings'] if 'videoFile' in rec]
+        touchFiles(audioProject.folder, a + t + v)
 
         os.chdir(audioProject.folder)
         for r in tdoc['recordings']:
             audioProject.recordings.append(
-                Recording(audioFile=r['audioFile'], transcriptFile=r['transcriptFile'])
+                Recording(audioFile=r['audioFile'], transcriptFile=r['transcriptFile'], videoFile=r.get('videoFile', None))
             )
         return audioProject
 
@@ -108,7 +113,8 @@ class TestNaveesProject:
         tdoc: tomlkit.TOMLDocument = tomlkit.loads(self.PROJECT_TOML)
         a = [rec['audioFile'] for rec in tdoc['recordings']]
         t = [rec['transcriptFile'] for rec in tdoc['recordings']]
-        touchFiles(str(folder), a + t)
+        v = [rec['videoFile'] for rec in tdoc['recordings'] if 'videoFile' in rec]
+        touchFiles(str(folder), a + t + v)
 
         audioProject = AudioProject()
         audioProject.name = str(tomlPath.stem)
