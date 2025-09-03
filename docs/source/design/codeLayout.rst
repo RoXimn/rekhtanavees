@@ -35,19 +35,17 @@ with the high level breakup of the code and the role of each part.
             authentication middleware.
 
         * :py:attr:`constants <rekhtanavees.constants>`
-            The folder contains central application runtime supportive
+            This module contains central application runtime supportive
             modules, not specific to any subsection but globally usable in the
             application.
 
         * :py:mod:`settings <rekhtanavees.settings>`
-            The folder contains central application runtime supportive
+            The module contains central application runtime supportive
             modules, not specific to any subsection but globally usable in the
             application.
 
-            Contains application runtime configurations in `config <raxis.core.config>`
-            module, while the `security <raxis.core.security>` module
-            defines token and password related authentication functions, used
-            across the application.
+        * :py:mod:`audio <rekhtanavees.audio>`
+            The folder contains audio related modules, classes and functions.
 
         * ``tests``
             Application unit tests.

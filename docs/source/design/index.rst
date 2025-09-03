@@ -22,5 +22,6 @@ who are trying to understand how the application internally works.
     :caption: Contents
     :maxdepth: 1
 
+    design
     codeLayout
     modules/index
