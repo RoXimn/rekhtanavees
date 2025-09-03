@@ -16,7 +16,7 @@ from PySide6.QtCore import QBuffer, QIODevice
 from numpy.typing import NDArray
 from scipy.io import wavfile
 
-from misc.utils import hmsTimestamp
+from rekhtanavees.misc.utils import hmsTimestamp
 
 
 # ******************************************************************************

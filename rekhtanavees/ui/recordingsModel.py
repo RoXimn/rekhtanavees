@@ -10,8 +10,8 @@
 from PySide6.QtCore import QAbstractTableModel, Qt
 from PySide6.QtGui import QFont
 
-from audio import Segment
-from misc.utils import hmsTimestamp, tms
+from rekhtanavees.audio import Segment
+from rekhtanavees.misc.utils import hmsTimestamp, tms
 
 
 # ******************************************************************************

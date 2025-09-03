@@ -14,7 +14,7 @@ import pytest
 import tomlkit
 from tomlkit import TOMLDocument
 
-from audio.audioclip import AudioClip
+from rekhtanavees.audio.audioclip import AudioClip
 
 
 # ******************************************************************************

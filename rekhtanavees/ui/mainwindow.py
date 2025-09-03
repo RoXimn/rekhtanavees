@@ -35,7 +35,7 @@ from rekhtanavees.settings import RSettings
 from rekhtanavees.ui.mainwindow_ui import Ui_rekhtaNavees
 from rekhtanavees.ui.projectwizard import RProjectWizard
 from rekhtanavees.ui.recordingwidget_ui import Ui_recordingWidget
-from ui.recordingsModel import RecordingsTableModel
+from rekhtanavees.ui.recordingsModel import RecordingsTableModel
 
 
 # ******************************************************************************

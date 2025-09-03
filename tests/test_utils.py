@@ -10,7 +10,7 @@
 # ******************************************************************************
 from random import choice, randint
 
-from misc.utils import isValidProjectName
+from rekhtanavees.misc.utils import isValidProjectName
 
 
 # ******************************************************************************

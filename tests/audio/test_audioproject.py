@@ -15,7 +15,7 @@ import pytest
 import tomlkit
 from tomlkit import TOMLDocument
 
-from audio.audioproject import AudioProject, AudioProjectException, Recording
+from rekhtanavees.audio.audioproject import AudioProject, AudioProjectException, Recording
 
 
 # ******************************************************************************

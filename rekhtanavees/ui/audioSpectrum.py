@@ -19,8 +19,7 @@ from PySide6.QtWidgets import (
     QScroller, QScrollerProperties, QPushButton
 )
 
-from audio import AudioRenderer, Segment, findSegment, loadTranscript
-from rekhtanavees.audio import AudioClip
+from rekhtanavees.audio import AudioClip, AudioRenderer, Segment, findSegment, loadTranscript
 from rekhtanavees.misc.utils import hmsTimestamp
 
 # ******************************************************************************
