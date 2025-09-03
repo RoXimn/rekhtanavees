@@ -27,28 +27,39 @@ Not tested on Linux/macOS.
 
 ### From Source
 #### Prerequisites
-* [Python](https://www.python.org/) 3.9 (Created and tested with 3.9, may work with Python 3 in general),
-* [Poetry](https://pypi.org/project/poetry/) python package manager.
+* [Python](https://www.python.org/) 3.12 (Created and tested with 3.12),
+* [uv](https://github.com/astral-sh/uv) Python package and project manager.
 
 #### Getting the source code
 The source is hosted on GitHub at [RoXimn/RekhtaNavees](https://github.com/roximn/rekhtanavees),
 
 Get the source code.
 ```commandline
-git clone
+git clone https://github.com/RoXimn/rekhtanavees
 ``` 
 
-#### Installing dependencies
-Activate the virtual environment and install dependencies with `Poetry`,
-```commandline
-cd rekhtanavees
-python -m venv .venv
-.venv\Scripts\activate.bat
-poetry install
-```
- 
+#### Setting up environment
+-   Change to the project directory
+    ```commandline
+    cd rekhtanavees
+    ```
+- Install requisite Python version, if not already done.
+    ```commandline
+    uv python install 3.12
+    ```
+
+- Create and activate a virtual environment
+    ```commandline
+    uv venv --python 3.12
+    .venv\Scripts\activate
+    ```
+- Install Python packages
+    ```commandline
+    uv sync
+    ```
+
 #### Compiling UI components
-The QT user interface and resource files need to be compiled before they can be used by the application,
+The Qt user interface and resource files need to be compiled before they can be used by the application,
 ```commandline
 python scripts\compileUI.py
 ```
@@ -64,4 +75,5 @@ The PyInstaller is run from the root directory of the project, where the specifi
 ```commandline
 pyinstaller rekthanavees.app.spec 
 ```
+
 producing the executable in the `dist/rektanvees` folder.
