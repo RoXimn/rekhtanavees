@@ -1,39 +1,46 @@
-[tool.poetry]
+[project]
 name = "RekhtaNavees"
 version = "0.1.0"
 description = "An urdu language audio transcriber."
-authors = ["roximn <roximn@rixir.org>"]
+authors = [{ name = "roximn", email = "roximn@rixir.org" }]
+requires-python = ">=3.12,<3.13"
 readme = "README.md"
 license = "CC-BY-4.0"
+dependencies = [
+    "pyside6[addons]>=6.7.1,<7",
+    "librosa>=0.11.0,<0.12",
+    "pymupdf>=1.24.2,<2",
+    "tomlkit>=0.12.5,<0.13",
+    "humanize>=4.9.0,<5",
+    "pydantic[email]>=2.7.1,<3",
+    "confz>=2.0.1,<3",
+    "strenum>=0.4.15,<0.5",
+    "pydantic-settings>=2.2.1,<3",
+    "tzdata~=2024.1",
+    "orjson>=3.10.3,<4",
+    "pytube>=15.0.0,<16",
+    "tqdm>=4.66.4,<5",
+    "sounddevice>=0.4.7,<0.5",
+    "soundfile>=0.12.1,<0.13",
+    "filelock>=3.19.1,<4",
+]
 
-[tool.poetry.dependencies]
-python = "~3.12"
-pyside6 = {extras = ["addons"], version = "^6.7.1"}
-librosa = "^0.11.0"
-pymupdf = "^1.24.2"
-tomlkit = "^0.12.5"
-humanize = "^4.9.0"
-pydantic = {extras = ["email"], version = "^2.7.1"}
-confz = "^2.0.1"
-strenum = "^0.4.15"
-pydantic-settings = "^2.2.1"
-tzdata = "^2024.1"
-orjson = "^3.10.3"
-pytube = "^15.0.0"
-tqdm = "^4.66.4"
-sounddevice = "^0.4.7"
-soundfile = "^0.12.1"
-filelock = "^3.19.1"
+[dependency-groups]
+dev = [
+    "mypy>=1.10.0,<2",
+    "sphinx>=7.3.7,<8",
+    "pytest>=8.2.1,<9",
+    "pyinstaller>=6.6.0,<7",
+    "sphinx-book-theme>=1.1.2,<2",
+    "autodoc-pydantic>=2.2.0,<3",
+    "pyside6-stubs",
+]
 
-[tool.poetry.group.dev.dependencies]
-mypy = "^1.10.0"
-sphinx = "^7.3.7"
-pytest = "^8.2.1"
-pyinstaller = "^6.6.0"
-sphinx-book-theme = "^1.1.2"
-autodoc-pydantic = "^2.2.0"
-pyside6-stubs = {git = "https://github.com/python-qt-tools/PySide6-stubs"}
+[tool.uv]
+
+[tool.uv.sources]
+pyside6-stubs = { git = "https://github.com/python-qt-tools/PySide6-stubs" }
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
