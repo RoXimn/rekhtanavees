@@ -12,12 +12,12 @@ from pathlib import Path
 from typing import List
 
 from PySide6.QtCore import (
-    QUrl, Qt, QTimer, QPoint, QEvent, QSize, QElapsedTimer, QModelIndex,
+    QUrl, Qt, QTimer, QPoint, QSize, QElapsedTimer, QModelIndex,
     QItemSelectionModel
 )
 from PySide6.QtGui import (
-    QAction, QIcon, QKeyEvent, QPainter, QBrush,
-    QColor, QResizeEvent, QFont, QTextOption, QFontMetrics, QFontDatabase,
+    QAction, QIcon, QKeyEvent, QResizeEvent,
+    QFont, QTextOption, QFontMetrics, QFontDatabase,
     QSyntaxHighlighter, QTextCharFormat
 )
 from PySide6.QtMultimedia import QMediaPlayer, QMediaDevices, QAudioOutput
@@ -34,14 +34,13 @@ from rekhtanavees.misc.utils import hmsTimestamp, tms
 from rekhtanavees.settings import RSettings
 from rekhtanavees.ui.mainwindow_ui import Ui_rekhtaNavees
 from rekhtanavees.ui.projectwizard import RProjectWizard
-from rekhtanavees.ui.recordingwidget_ui import Ui_recordingWidget
 from rekhtanavees.ui.recordingsModel import RecordingsTableModel
 
 
 # ******************************************************************************
-class RHighlighter(QSyntaxHighlighter):
+class TextHighlighter(QSyntaxHighlighter):
     def __init__(self, parent=None):
-        super(RHighlighter, self).__init__(parent)
+        super(TextHighlighter, self).__init__(parent)
         self._mappings = {}
 
     def addMapping(self, pattern: str, format_: QTextCharFormat):
@@ -55,40 +54,6 @@ class RHighlighter(QSyntaxHighlighter):
 
 
 # ******************************************************************************
-class ClipWidget(QWidget):
-    # **************************************************************************
-    def __init__(self, parent: QWidget = None):
-        super(ClipWidget, self).__init__(parent)
-        self.ui = Ui_recordingWidget()
-        self.ui.setupUi(self)
-
-
-# ******************************************************************************
-class OverlayLabel(QWidget):
-    def __init__(self, parent: QWidget):
-        super(OverlayLabel, self).__init__(parent)
-        self.darkBrush = QBrush(QColor(100, 100, 100, 128))
-        self.setAttribute(Qt.WA_NoSystemBackground, True)
-        self.setAttribute(Qt.WA_TranslucentBackground, True)
-        if parent:
-            self.resize(parent.geometry().size())
-            self.raise_()
-            self.show()
-
-    def paintEvent(self, event: QEvent):
-        p = QPainter()
-        p.begin(self)
-        p.fillRect(self.rect(), self.darkBrush)
-
-        white = QColor(Qt.white)
-        white.setAlpha(192)
-        p.setPen(white)
-        p.setFont(QFont('Noto Naskh Arabic', 18))
-        p.drawText(self.rect(), Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter, "مموریکانغصیتبھنغ")
-        p.end()
-
-
-# ******************************************************************************
 class MainWindow(QMainWindow):
     """Application MainWindow class"""
 
@@ -97,11 +62,11 @@ class MainWindow(QMainWindow):
         if watched is self.ui.videoView and isinstance(event, QResizeEvent):
             # print(watched, event)
             sz = self.ui.videoView.geometry().size()
-            self.videoItem.setSize(sz)
+            self.ui.videoItem.setSize(sz)
             c = self.ui.videoView.rect().center()
             c.setX(0)
-            self.cc.setPos(c)
-            self.cc.setTextWidth(sz.width())
+            self.ui.sceneCaption.setPos(c)
+            self.ui.sceneCaption.setTextWidth(sz.width())
         return super(MainWindow, self).eventFilter(watched, event)
 
     # **************************************************************************
@@ -135,15 +100,15 @@ class MainWindow(QMainWindow):
         to.setFlags(QTextOption.ShowTabsAndSpaces | QTextOption.ShowLineAndParagraphSeparators)
         doc.setDefaultTextOption(to)
 
-        self.highlighter = RHighlighter(self)
+        self.ui.highlighter = TextHighlighter(self)
         fmt = QTextCharFormat()
         fmt.setFontWeight(QFont.Bold)
         fmt.setForeground(Qt.gray)
-        self.highlighter.addMapping(r'\s+', fmt)
+        self.ui.highlighter.addMapping(r'\s+', fmt)
         # fmt = QTextCharFormat()
         # fmt.setForeground(Qt.blue)
         # self.highlighter.addMapping(r'\S+', fmt)
-        self.highlighter.setDocument(doc)
+        self.ui.highlighter.setDocument(doc)
 
         self.ui.actionNew.triggered.connect(self.onNew)
         self.ui.actionOpen.triggered.connect(self.onOpen)
@@ -156,11 +121,11 @@ class MainWindow(QMainWindow):
         self.ui.actionAbout.triggered.connect(self.onAbout)
         self.ui.actionAboutQt.triggered.connect(qApp.aboutQt)
 
-        self.autoSaveTimer = QTimer(self)
-        self.autoSaveTimer.timeout.connect(self.onAutoSave)
+        self.ui.autoSaveTimer = QTimer(self)
+        self.ui.autoSaveTimer.timeout.connect(self.onAutoSave)
 
         # Recent files
-        self.maxRecentCount = RSettings().Main.RecentMaxCount
+        self.ui.maxRecentCount = RSettings().Main.RecentMaxCount
 
         self.ui.recentSeperator = self.ui.menuRecent.addSeparator()
         self.ui.menuRecent.insertAction(self.ui.actionClearRecent, self.ui.recentSeperator)
@@ -169,58 +134,44 @@ class MainWindow(QMainWindow):
         self.ui.actionClearRecent.setEnabled(False)
         self.ui.actionClearRecent.triggered.connect(self.onClearRecentFiles)
 
-        self.recentFileActionList = []
-        for i in range(self.maxRecentCount):
+        self.ui.recentFileActionList = []
+        for i in range(self.ui.maxRecentCount):
             act = QAction(self)
             act.setVisible(False)
             act.triggered.connect(self.onOpenRecent)
-            self.recentFileActionList.append(act)
+            self.ui.recentFileActionList.append(act)
             self.ui.menuRecent.insertAction(self.ui.recentSeperator, act)
 
         self.updateRecentFileList()
 
-        self.audioProject: AudioProject | None = None
-        self.audioRecordings: list = []
-        self.currentRecording: int = 0
-        """Current recording  index.
-        
-        This index will be used to keep track of the current recording used for processing"""
+        self.ui.scene = QGraphicsScene()
 
-        self.currentSegment: int = 0
-        """
-        Current transcript segment index.
-        
-        This segment will be used to keep track of the currently playing or displayed segment in the application.
-        Initialized to 0.
-        """
-
-        self.scene = QGraphicsScene()
-
-        self.cc = QGraphicsTextItem()
-        self.cc.setZValue(100)
-        self.cc.setFont(QFont('Noto Naskh Arabic', 18))
-        self.cc.setDefaultTextColor(Qt.white)
-        to = self.cc.document().defaultTextOption()
+        self.ui.sceneCaption = QGraphicsTextItem()
+        self.ui.sceneCaption.setZValue(100)
+        # TODO: Add caption formating to RSettings
+        self.ui.sceneCaption.setFont(QFont('Noto Naskh Arabic', 18))
+        self.ui.sceneCaption.setDefaultTextColor(Qt.white)
+        to = self.ui.sceneCaption.document().defaultTextOption()
         to.setTextDirection(Qt.LayoutDirection.RightToLeft)
         to.setAlignment(Qt.AlignmentFlag.AlignCenter)
         to.setFlags(QTextOption.ShowTabsAndSpaces | QTextOption.ShowLineAndParagraphSeparators)
-        self.cc.document().setDefaultTextOption(to)
-        self.scene.addItem(self.cc)
+        self.ui.sceneCaption.document().setDefaultTextOption(to)
+        self.ui.scene.addItem(self.ui.sceneCaption)
 
-        self.videoItem = QGraphicsVideoItem()
-        self.videoItem.setOffset(QPoint(0, 0))
-        self.scene.addItem(self.videoItem)
-        self.ui.videoView.setScene(self.scene)
+        self.ui.videoItem = QGraphicsVideoItem()
+        self.ui.videoItem.setOffset(QPoint(0, 0))
+        self.ui.scene.addItem(self.ui.videoItem)
+        self.ui.videoView.setScene(self.ui.scene)
 
-        self.videoPlayer = QMediaPlayer()
-        self.videoPlayer.setVideoOutput(self.videoItem)
+        self.ui.videoPlayer = QMediaPlayer()
+        self.ui.videoPlayer.setVideoOutput(self.ui.videoItem)
         self.ui.playSlider.setEnabled(False)
 
-        self.audioOutput = QAudioOutput(QMediaDevices.defaultAudioOutput())
-        self.audioPlayer = QMediaPlayer()
-        self.audioPlayer.setAudioOutput(self.audioOutput)
-        self.audioPlayer.durationChanged.connect(self.onDurationChange)
-        self.audioPlayer.positionChanged.connect(self.onPositionChange)
+        self.ui.audioOutput = QAudioOutput(QMediaDevices.defaultAudioOutput())
+        self.ui.audioPlayer = QMediaPlayer()
+        self.ui.audioPlayer.setAudioOutput(self.ui.audioOutput)
+        self.ui.audioPlayer.durationChanged.connect(self.onDurationChange)
+        self.ui.audioPlayer.positionChanged.connect(self.onPositionChange)
 
         self.ui.btnPlay.clicked.connect(self.onTogglePlay)
 
@@ -238,8 +189,26 @@ class MainWindow(QMainWindow):
         self.ui.leAuthorEmail.textChanged.connect(self.updateAuthorEmail)
         self.ui.tbxDescription.textChanged.connect(self.updateDescription)
 
+        self.audioProject: AudioProject | None = None
+        self.audioRecordings: list = []
+        self.currentRecording: int = 0
+        """Current recording  index.
+
+        This index will be used to keep track of the current recording used for processing"""
+
+        self.currentSegment: int = 0
+        """
+        Current transcript segment index.
+
+        This segment will be used to keep track of the currently playing or displayed segment in the application.
+        Initialized to 0.
+        """
+
         self.clearRecordingsUi()
         self.setRecordingUiEnabled(False)
+
+        self.clearProjectUi()
+        self.setProjectUiEnabled(False)
 
     # **************************************************************************
     def setProjectUiEnabled(self, enabled: bool):
@@ -249,12 +218,17 @@ class MainWindow(QMainWindow):
 
             self.ui.actionDetails.setEnabled(True)
             self.ui.dckProjectDetailsContents.setEnabled(True)
+
+            self.ui.autoSaveTimer.start(RSettings().Main.AutoSaveInterval * 60 * 1000)
+
         else:
             self.ui.actionSave.setDisabled(True)
             self.ui.actionClose.setDisabled(True)
 
             self.ui.actionDetails.setDisabled(True)
             self.ui.dckProjectDetailsContents.setDisabled(True)
+
+            self.ui.autoSaveTimer.stop()
 
     # **************************************************************************
     def setRecordingUiEnabled(self, enabled: bool):
@@ -314,7 +288,7 @@ class MainWindow(QMainWindow):
         text = self.ui.transcript.toPlainText()
         if self.audioRecordings:
             self.audioRecordings[self.currentRecording][1][self.currentSegment].text = text
-            self.cc.setPlainText(text)
+            self.ui.sceneCaption.setPlainText(text)
 
     # **************************************************************************
     def keyPressEvent(self, e: QKeyEvent):
@@ -347,11 +321,10 @@ class MainWindow(QMainWindow):
         if len(self.audioRecordings) == 0:
             return
 
-        if self.audioPlayer.playbackState() == QMediaPlayer.PlayingState:
+        if self.ui.audioPlayer.playbackState() == QMediaPlayer.PlayingState:
             self.pauseSegment()
         else:
             self.playSegment()
-
 
     # **************************************************************************
     def onDurationChange(self, duration):
@@ -385,7 +358,7 @@ class MainWindow(QMainWindow):
             )
             self.ui.tbvListing.scrollTo(idx)
 
-            if self.audioPlayer.playbackState() == QMediaPlayer.PlayingState:
+            if self.ui.audioPlayer.playbackState() == QMediaPlayer.PlayingState:
                 self.playSegment()
 
             if self.ui.sbxIndex.value() - 1 != self.currentSegment:
@@ -433,10 +406,10 @@ class MainWindow(QMainWindow):
             return
 
         s = self.audioRecordings[self.currentRecording][1][self.currentSegment]
-        self.audioPlayer.setPosition(tms(s.start))
-        self.videoPlayer.setPosition(tms(s.start))
-        self.audioPlayer.play()
-        self.videoPlayer.play()
+        self.ui.audioPlayer.setPosition(tms(s.start))
+        self.ui.videoPlayer.setPosition(tms(s.start))
+        self.ui.audioPlayer.play()
+        self.ui.videoPlayer.play()
 
         self.ui.btnPlay.setText("Pause")
         icon = QIcon(':/images/icons/media-playback-pause.png')
@@ -444,8 +417,8 @@ class MainWindow(QMainWindow):
 
     # **************************************************************************
     def pauseSegment(self):
-        self.audioPlayer.pause()
-        self.videoPlayer.pause()
+        self.ui.audioPlayer.pause()
+        self.ui.videoPlayer.pause()
 
         self.ui.btnPlay.setText("Play")
         icon = QIcon(':/images/icons/media-playback-start.png')
@@ -465,15 +438,6 @@ class MainWindow(QMainWindow):
             self.pauseSegment()
             if self.ui.cbxLoop.isChecked():
                 QTimer.singleShot(1000, self.playSegment)
-
-    # **************************************************************************
-    # def onOpenSource(self) -> None:
-        # pdf = fitz.open(r'C:\Users\driyo\Documents\qtextlayout.h.pdf')
-        # pg = pdf[0]
-        # px = pg.get_pixmap(dpi=300, alpha=False)
-        # img = QImage(px.samples, px.width, px.height, px.stride, QImage.Format_RGB888)
-        # self.ui.transcriptionSource.setImage(img)
-        # self.playSegment()
 
     # **************************************************************************
     def onOpenRecent(self) -> None:
@@ -528,8 +492,8 @@ class MainWindow(QMainWindow):
         while projectFilename in recentFiles:
             recentFiles.remove(projectFilename)
         recentFiles.insert(0, projectFilename)
-        if len(recentFiles) > self.maxRecentCount:
-            del recentFiles[self.maxRecentCount:]
+        if len(recentFiles) > self.ui.maxRecentCount:
+            del recentFiles[self.ui.maxRecentCount:]
         settings.Main.RecentFiles = recentFiles
         settings.save()
         qApp.logger.debug(f"Updated recents[{len(recentFiles)}] {', '.join(f'{rf!s}' for rf in recentFiles)}")
@@ -546,15 +510,15 @@ class MainWindow(QMainWindow):
         for i in range(total):
             recentFile = recentFiles[i]
             fn = recentFile.stem
-            act = self.recentFileActionList[i]
+            act = self.ui.recentFileActionList[i]
             act.setText(f'&{i + 1}. {fn}')
             act.setIcon(QIcon(':/images/icons/folder-bookmark.png'))
             act.setVisible(True)
             act.setToolTip(str(recentFile))
             act.setData(recentFile)
 
-        for i in range(total, self.maxRecentCount):
-            self.recentFileActionList[i].setVisible(False)
+        for i in range(total, self.ui.maxRecentCount):
+            self.ui.recentFileActionList[i].setVisible(False)
 
         hasRecent: bool = total > 0
         self.ui.actionClearRecent.setEnabled(hasRecent)
@@ -630,7 +594,7 @@ class MainWindow(QMainWindow):
 
             self.currentRecording = 0
             recording = self.audioRecordings[self.currentRecording]
-            self.audioPlayer.setSource(QUrl.fromLocalFile(projectFolder / audioProject.recordings[self.currentRecording].audioFile))
+            self.ui.audioPlayer.setSource(QUrl.fromLocalFile(projectFolder / audioProject.recordings[self.currentRecording].audioFile))
             self.ui.audioSpectrumArea.audioSpectrum.setSource(recording[0], recording[1])
             self.recordingsModel.setSegments(self.audioRecordings[self.currentRecording][1])
             self.ui.tbvListing.resizeColumnsToContents()
@@ -638,7 +602,7 @@ class MainWindow(QMainWindow):
             self.currentSegment = 0
             self.displayCurrentSegment()
 
-            self.videoPlayer.setSource(self.audioRecordings[self.currentRecording][2])
+            self.ui.videoPlayer.setSource(self.audioRecordings[self.currentRecording][2])
             self.ui.lblCurrentPosition.setText(hmsTimestamp(0, shorten=True, fixedPrecision=True))
             self.ui.lblTotalLength.setText(hmsTimestamp(len(recording[0]), shorten=True, fixedPrecision=True))
 
@@ -654,11 +618,9 @@ class MainWindow(QMainWindow):
 
             t2 = timer.elapsed()
 
-        self.autoSaveTimer.start(RSettings().Main.AutoSaveInterval * 60 * 1000)
+        self.ui.autoSaveTimer.start(RSettings().Main.AutoSaveInterval * 60 * 1000)
         self.statusBar().showMessage(f'Loaded project {audioProject.name}({audioProject.projectFolder})', 3000)
         qApp.logger.debug(f'Project {audioProject.name} loaded in {t1} ms, UI loaded in {t2} ms.')
-
-        self.setFocus()
 
     # **************************************************************************
     def saveRecordings(self):
@@ -668,7 +630,7 @@ class MainWindow(QMainWindow):
         audioProject = self.audioProject
 
         for i, (audioClip, transcript, video) in enumerate(self.audioRecordings):
-            transcriptFile = audioProject.projectFolder / audioProject.recordings[i].transcriptFile
+            transcriptFile = Path(audioProject.projectFolder) / audioProject.recordings[i].transcriptFile
             qApp.logger.info(f'Saving {transcriptFile.resolve()}')
 
             # Save the transcript file
@@ -697,8 +659,8 @@ class MainWindow(QMainWindow):
         self.ui.lblCurrentPosition.setText("--:--")
         self.ui.lblTotalLength.setText("--:--")
 
-        self.videoPlayer.setSource(QUrl())
-        self.audioPlayer.setSource(QUrl())
+        self.ui.videoPlayer.setSource(QUrl())
+        self.ui.audioPlayer.setSource(QUrl())
 
         self.ui.transcript.clear()
         self.ui.audioSpectrumArea.audioSpectrum.setSource(None, None)
@@ -720,18 +682,15 @@ class MainWindow(QMainWindow):
     def onProjectClose(self):
         # TODO: Check unsaved data before exit
 
-        qApp.logger.info(f"Closing project {self.audioProject.name}({self.audioProject.projectFolder})")
-        self.clearRecordingsUi()
-        self.audioRecordings = []
-        self.setRecordingUiEnabled(False)
+        if self.audioProject:
+            qApp.logger.info(f"Closing project {self.audioProject.name}({self.audioProject.projectFolder})")
+            self.clearRecordingsUi()
+            self.audioRecordings = []
+            self.setRecordingUiEnabled(False)
 
-        self.clearProjectUi()
-        self.audioProject = None
-        self.setProjectUiEnabled(False)
-
-        self.autoSaveTimer.stop()
-        self.statusBar().showMessage(f"AutosaveTimer: {self.autoSaveTimer.isActive()}", 5000)
-        self.ui.actionClose.setEnabled(False)
+            self.clearProjectUi()
+            self.audioProject = None
+            self.setProjectUiEnabled(False)
 
 
 # ******************************************************************************
