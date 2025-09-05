@@ -8,27 +8,29 @@
 # Author:      RoXimn <roximn@rixir.org>
 # ******************************************************************************
 import os
-from datetime import datetime, timezone
+import uuid
+from datetime import datetime, UTC
 from pathlib import Path
 
 import pytest
 import tomlkit
-from tomlkit import TOMLDocument
 
-from rekhtanavees.audio.audioproject import AudioProject, AudioProjectException, Recording
+from rekhtanavees.audio.audioproject import (
+    AudioProject, AudioProjectException, Recording
+)
 
 
 # ******************************************************************************
-def touchFiles(folder: str, files: list[str]) -> None:
-    """Create the specified files in the given folder.
+def touchFiles(folder: Path, files: list[str]) -> None:
+    """Create the specified dummy files in the given folder.
 
     Args:
-        folder (str): The path to the folder where the files should be created.
+        folder (Path): Path to the folder where the files should be created.
         files (list[str]): A list of filenames to create.
     """
     os.chdir(folder)
     for f in files:
-        (Path(folder) / Path(f)).touch(exist_ok=True)
+        (folder / f).touch(exist_ok=True)
 
 
 # ******************************************************************************
@@ -40,16 +42,17 @@ class TestNaveesProject:
         '\n'
         '[general]\n'
         'title = "Lmnop Qrst"\n'
-        'authorName = "Abcdef"\n'
+        'authorName = "abcdefghi"\n'
         'authorEmail = "abcdef@gmail.com"\n'
-        'description = "A description of the project"\n'
-        'createdOn = 1979-05-27T00:32:00-07:00\n'
-        'lastSavedOn = 1979-05-27T00:32:00+07:00\n'
+        'description = """'
+        'A description of the project'
+        '"""\n'
+        'createdOn = 1979-05-27T00:32:00+00:00\n'
         '\n'
         '[[recordings]]\n'
         'audioFile = "recording001.flac"\n'
         'transcriptFile = "recording001.txt"\n'
-        'videoFile = "video001.mp4"\n'
+        'videoFile = "recording001.mp4"\n'
         '\n'
         '[[recordings]]\n'
         'audioFile = "recording002.flac"\n'
@@ -61,71 +64,88 @@ class TestNaveesProject:
     )
 
     # **************************************************************************
-    @pytest.fixture(scope="session")
-    def referenceTomlFilePath(self, tmp_path_factory) -> Path:
-        folder = tmp_path_factory.mktemp('data')
-        tomlPath: Path = folder / 'test.toml'
-        with tomlPath.open('wb+') as toml:
-            toml.write(self.PROJECT_TOML.encode('utf8'))
+    def refProjectTomlDoc(self, folder: Path)-> tomlkit.TOMLDocument:
+        """Create a project TOML document and its associated files in the given folder"""
 
+        # Extract referenced data files from the TOML document and create them
         tdoc: tomlkit.TOMLDocument = tomlkit.loads(self.PROJECT_TOML)
         a = [rec['audioFile'] for rec in tdoc['recordings']]
         t = [rec['transcriptFile'] for rec in tdoc['recordings']]
         v = [rec['videoFile'] for rec in tdoc['recordings'] if 'videoFile' in rec]
-        touchFiles(str(folder), a + t + v)
+        touchFiles(folder, a + t + v)
 
-        return tomlPath
+        return tdoc
 
     # **************************************************************************
-    @pytest.fixture(scope="session")
-    def referenceUnsavedProject(self, tmpdir_factory) -> AudioProject:
-        audioProject = AudioProject()
-        audioProject.name = 'unsavedProject'
-        audioProject.folder = str(tmpdir_factory.mktemp('test'))
+    @staticmethod
+    def projectFromTomlDoc(name: str, folder: Path,
+                           tdoc: tomlkit.TOMLDocument) -> AudioProject:
+        """Create an AudioProject instance from given TOML document"""
 
-        tdoc: TOMLDocument = tomlkit.loads(self.PROJECT_TOML)
+        audioProject = AudioProject(path=folder, name=name)
+
+        audioProject.title = tdoc['general']['title']
         audioProject.authorName = tdoc['general']['authorName']
         audioProject.authorEmail = tdoc['general']['authorEmail']
         audioProject.description = tdoc['general']['description']
+
         audioProject.createdOn = tdoc['general']['createdOn']
-        audioProject.lastSavedOn = tdoc['general']['lastSavedOn']
+        audioProject.lastSavedOn = tdoc['general'].get('lastSavedOn', None)
 
-        a = [rec['audioFile'] for rec in tdoc['recordings']]
-        t = [rec['transcriptFile'] for rec in tdoc['recordings']]
-        v = [rec['videoFile'] for rec in tdoc['recordings'] if 'videoFile' in rec]
-        touchFiles(audioProject.folder, a + t + v)
-
+        # As the paths in project document are relative to project file,
+        # changing to the directory ensures the pydantic can do its
+        # validation correctly
         os.chdir(audioProject.folder)
+
         for r in tdoc['recordings']:
             audioProject.recordings.append(
-                Recording(audioFile=r['audioFile'], transcriptFile=r['transcriptFile'], videoFile=r.get('videoFile', None))
+                Recording(audioFile=r['audioFile'],
+                          transcriptFile=r['transcriptFile'],
+                          videoFile=r.get('videoFile', None))
             )
-        return audioProject
-
-    # **************************************************************************
-    @pytest.fixture(scope="session")
-    def referenceSavedProject(self, tmp_path_factory) -> AudioProject:
-        folder = tmp_path_factory.mktemp('data')
-        tomlPath: Path = folder / 'reference.toml'
-        with tomlPath.open('wb+') as toml:
-            toml.write(self.PROJECT_TOML.encode('utf8'))
-
-        tdoc: tomlkit.TOMLDocument = tomlkit.loads(self.PROJECT_TOML)
-        a = [rec['audioFile'] for rec in tdoc['recordings']]
-        t = [rec['transcriptFile'] for rec in tdoc['recordings']]
-        v = [rec['videoFile'] for rec in tdoc['recordings'] if 'videoFile' in rec]
-        touchFiles(str(folder), a + t + v)
-
-        audioProject = AudioProject()
-        audioProject.name = str(tomlPath.stem)
-        audioProject.folder = str(tomlPath.parent)
-        audioProject.loadProject()
 
         return audioProject
 
     # **************************************************************************
-    def test_ProjectAttributes(self):
-        audioProject = AudioProject()
+    @pytest.fixture
+    def refUnsavedProject(self, tmp_path) -> AudioProject:
+        """An unsaved AudioProject instance and associated files"""
+
+        name = str(uuid.uuid4())
+        tdoc = self.refProjectTomlDoc(tmp_path)
+
+        audioProject = self.projectFromTomlDoc(name, tmp_path, tdoc)
+
+        return audioProject
+
+    # **************************************************************************
+    @pytest.fixture
+    def refSavedProject(self, tmp_path) -> AudioProject:
+
+        name = str(uuid.uuid4())
+        tdoc = self.refProjectTomlDoc(tmp_path)
+
+        tomlPath: Path = tmp_path / f'{name}.toml'
+        tdoc['general']['lastSavedOn'] = datetime.now(UTC)
+        tomlPath.write_text(tdoc.as_string(), encoding='utf8')
+
+        audioProject = self.projectFromTomlDoc(name, tmp_path, tdoc)
+
+        return audioProject
+
+    # **************************************************************************
+    def test_ProjectAttributes(self, tmp_path):
+
+        name = str(uuid.uuid4())
+        audioProject = AudioProject(path=tmp_path, name=name)
+
+        assert isinstance(audioProject, AudioProject)
+
+        assert hasattr(audioProject, 'filename')
+        assert audioProject.filename == f'{name}.toml'
+        assert hasattr(audioProject, 'folder')
+        assert audioProject.folder == tmp_path
+
         assert hasattr(audioProject, 'title')
         assert audioProject.title == ''
         assert hasattr(audioProject, 'authorName')
@@ -133,11 +153,15 @@ class TestNaveesProject:
         assert hasattr(audioProject, 'authorEmail')
         assert audioProject.authorEmail == ''
         assert hasattr(audioProject, 'author')
-        assert audioProject.author == ' <>'
+        assert audioProject.author == ''
         assert hasattr(audioProject, 'description')
         assert audioProject.description == ''
-        assert hasattr(audioProject, 'projectFolder')
-        assert audioProject.projectFolder == ''
+
+        assert hasattr(audioProject, 'isModified')
+        assert audioProject.isModified == False
+        assert hasattr(audioProject, 'isSaved')
+        assert audioProject.isSaved == False
+
         assert hasattr(audioProject, 'createdOn')
         assert hasattr(audioProject, 'lastSavedOn')
         assert hasattr(audioProject, 'recordings')
@@ -148,7 +172,6 @@ class TestNaveesProject:
         ('   ', ''),
         ('\t', ''),
         ('\n', ''),
-        (None, ''),
         ('H@ll(0)', ''),
         ('       hello', 'hello'),
         ('hello       ', 'hello'),
@@ -156,99 +179,95 @@ class TestNaveesProject:
         ('   hello world      ', 'hello world'),
         ('   hello world  out   there    ', 'hello world  out   there'),
     ])
-    def test_ProjectNameSetter(self, assigned, expected):
-        audioProject = AudioProject()
+    def test_ProjectNameSetter(self, assigned, expected, tmp_path):
+        name = str(uuid.uuid4())
+        audioProject = AudioProject(path=tmp_path, name=name)
+
         assert audioProject.name == ''
 
         audioProject.name = assigned
         assert audioProject.name == expected
 
     # **************************************************************************
-    @pytest.mark.parametrize('assigned, expected', [
-        ('   ', ''),
-        ('/a/path/to/nowhere', ''),
-        (str(Path(__file__)), ''),
-        (str(Path(__file__).parent), str(Path(__file__).parent))
-    ])
-    def test_ProjectFolderSetter(self, assigned, expected):
-        audioProject = AudioProject()
-        audioProject.folder = assigned
-        assert audioProject.folder == expected
-
-    # **************************************************************************
     @pytest.mark.parametrize('prjName, prjFolder', [
-        ('', ''),
-        ('a valid filename', ''),
-        ('a valid filename', '/path/to/somewhere'),
-        ('a valid filename', str(Path(__file__).parent))
+        ('', Path(':')),
+        ('a valid filename', Path(':')),
+        ('a valid filename', Path('/path/to/nowhere')),
+        ('Invalid:filename', str(Path(__file__).parent))
     ])
-    def test_ProjectLoadInvalidPath(self, prjName, prjFolder):
-        audioProject = AudioProject()
-        audioProject.name = prjName
-        audioProject.folder = prjFolder
+    def test_ProjectSetInvalidPath(self, prjName, prjFolder, tmp_path):
+        name = str(uuid.uuid4())
+        audioProject = AudioProject(path=tmp_path, name=name)
 
-        with pytest.raises(AudioProjectException):
-            audioProject.loadProject()
+        with pytest.raises(AssertionError):
+            audioProject.setFilePath(folder=prjFolder, name=prjName)
 
     # **************************************************************************
-    def test_ProjectLoadValidContent(self, referenceTomlFilePath):
-        audioProject = AudioProject()
-        audioProject.name = str(referenceTomlFilePath.stem)
-        audioProject.folder = str(referenceTomlFilePath.parent)
+    def test_ProjectLoadValidContent(self, refSavedProject):
+        audioProject = refSavedProject
+
+        print(audioProject.filePath)
 
         audioProject.loadProject()
 
-        assert audioProject.authorName == 'Abcdef'
+        assert audioProject.title == 'Lmnop Qrst'
+        assert audioProject.authorName == 'abcdefghi'
         assert audioProject.authorEmail == 'abcdef@gmail.com'
         assert audioProject.description == 'A description of the project'
-        assert audioProject.createdOn == datetime.fromisoformat('1979-05-27T00:32:00-07:00')
-        assert audioProject.lastSavedOn == datetime.fromisoformat('1979-05-27T00:32:00+07:00')
+
+        assert audioProject.createdOn == datetime.fromisoformat('1979-05-27T00:32:00+00:00')
+        assert audioProject.lastSavedOn is not None
 
         assert len(audioProject.recordings) == 3
         for i, record in enumerate(audioProject.recordings):
             assert str(record.audioFile) == f'recording{i + 1:03}.flac'
             assert str(record.transcriptFile) == f'recording{i + 1:03}.txt'
+            if record.videoFile:
+                assert str(record.videoFile) == f'recording{i + 1:03}.mp4'
 
     # **************************************************************************
-    def test_ProjectSaveValidContent(self, referenceUnsavedProject):
+    def test_ProjectSaveValidContent(self, refUnsavedProject):
 
-        referenceUnsavedProject.saveProject()
+        refUnsavedProject.saveProject()
 
-        with open(referenceUnsavedProject.projectFilename(), 'r') as f:
+        with open(refUnsavedProject.filePath, 'r') as f:
             tdocLoaded = tomlkit.load(f)
 
-        assert tdocLoaded['general']['authorName'] == referenceUnsavedProject.authorName
-        assert tdocLoaded['general']['authorEmail'] == referenceUnsavedProject.authorEmail
-        assert tdocLoaded['general']['description'] == referenceUnsavedProject.description
-        assert tdocLoaded['general']['createdOn'] == referenceUnsavedProject.createdOn
-        assert tdocLoaded['general']['lastSavedOn'] == referenceUnsavedProject.lastSavedOn
+        assert tdocLoaded['general']['title'] == refUnsavedProject.title
+        assert tdocLoaded['general']['authorName'] == refUnsavedProject.authorName
+        assert tdocLoaded['general']['authorEmail'] == refUnsavedProject.authorEmail
+        assert tdocLoaded['general']['description'].strip() == refUnsavedProject.description
 
-        assert len(tdocLoaded['recordings']) == len(referenceUnsavedProject.recordings)
-        for a, b in zip(tdocLoaded['recordings'], referenceUnsavedProject.recordings):
+        assert tdocLoaded['general']['createdOn'] == refUnsavedProject.createdOn
+        assert tdocLoaded['general']['lastSavedOn'] is not None
+
+        assert len(tdocLoaded['recordings']) == len(refUnsavedProject.recordings)
+        for a, b in zip(tdocLoaded['recordings'], refUnsavedProject.recordings):
             assert a['audioFile'] == str(b.audioFile)
             assert a['transcriptFile'] == str(b.transcriptFile)
+            assert a['videoFile'] == str(b.videoFile)
 
     # **************************************************************************
     @pytest.mark.parametrize('attribute, value', [
-        ('description', 'another description to shed light on the unilluminated'),
+        ('description', 'another description to shed light on the unilluminated\n'),
+        ('title', 'a new title of the old project\n'),
         ('authorName', 'roximn'),
         ('authorEmail', 'roximn@rixir.org'),
-        ('createdOn', datetime.now(timezone.utc)),
-        ('lastSavedOn', datetime.now(timezone.utc)),
+        ('createdOn', datetime.now(UTC)),
     ])
-    def test_ProjectSaveModifiedContent(self, referenceSavedProject, attribute, value):
-        setattr(referenceSavedProject, attribute, value)
-        referenceSavedProject.saveProject()
+    def test_ProjectSaveModifiedContent(self, refSavedProject, attribute, value):
+        setattr(refSavedProject, attribute, value)
+        refSavedProject.saveProject()
 
-        with open(referenceSavedProject.projectFilename(), 'r') as f:
+        with open(refSavedProject.filePath, 'r') as f:
             tdocLoaded = tomlkit.load(f)
         assert tdocLoaded['general'][attribute] == value
 
     # **************************************************************************
     @pytest.mark.parametrize('R, r', [(5, 10), (10, 10), (15, 10), (10, 0), (0, 10)])
-    def test_ProjectSaveModifiedRecordings(self, referenceUnsavedProject, R, r):
+    def test_ProjectSaveModifiedRecordings(self, refUnsavedProject, R, r):
         # Prepare saved project with `r` recordings
-        prj = referenceUnsavedProject
+        prj = refUnsavedProject
         prj.recordings.clear()
         a = [f'ac{n}' for n in range(r)]
         t = [f't{n}' for n in range(r)]
@@ -257,7 +276,7 @@ class TestNaveesProject:
         prj.saveProject()
 
         # Confirm `r` recordings in toml
-        with open(prj.projectFilename(), 'r') as f:
+        with open(prj.filePath, 'r') as f:
             tdocLoaded = tomlkit.load(f)
         assert (r == 0 and 'recordings' not in tdocLoaded) ^ (r != 0 and len(tdocLoaded['recordings']) == r)
 
@@ -269,6 +288,8 @@ class TestNaveesProject:
         prj.saveProject()
 
         # Confirm `R` recordings in toml
-        with open(prj.projectFilename(), 'r') as f:
+        with open(prj.filePath, 'r') as f:
             tdocLoaded = tomlkit.load(f)
         assert (R == 0 and 'recordings' not in tdocLoaded) ^ (R != 0 and len(tdocLoaded['recordings']) == R)
+
+# ******************************************************************************

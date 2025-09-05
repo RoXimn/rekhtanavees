@@ -68,15 +68,58 @@ class Recording(BaseModel):
 # ******************************************************************************
 class AudioProject:
     # **************************************************************************
-    def __init__(self):
+    def __init__(self, path: Path, name: str = None):
+        """
+        Represents an audio project.
+
+        Args:
+            path (Path): Existing project directory or the path to the
+                project file. Should exit in filesystem.
+            name (str, optional): The name of the project (without suffix).
+                If provided, it is used as the name of the project file and
+                 the path should be the destination folder.
+        """
+        assert isinstance(path, Path)
+        assert path.exists()
+
+        if name:
+            assert path.is_dir()
+            self.filePath: Path = (path / f'{name}.toml').resolve()
+        else:
+            assert path.is_file()
+            assert path.suffix == '.toml'
+            self.filePath: Path = path
+
         self.title: str = ''
-        self.projectFolder: str = ''
         self.originator: str = ''
         self.email: str = ''
         self.narrative: str = ''
         self.createdOn: datetime = datetime.now(UTC)
-        self.lastSavedOn: datetime = self.createdOn
+        self.lastSavedOn: datetime | None = None
         self.recordings: list[Recording] = []
+        self.dirty = False
+
+    # **************************************************************************
+    @property
+    def folder(self) -> Path:
+        """Audio project folder path"""
+        return self.filePath.parent if self.filePath else Path()
+
+    # **************************************************************************
+    @property
+    def filename(self) -> str:
+        """Project filename with file extension but without path"""
+        return self.filePath.name if self.filePath else ''
+
+    # **************************************************************************
+    def setFilePath(self, folder: Path, name: str) -> None:
+        """Set project filename and folder"""
+        assert isinstance(folder, Path)
+        assert folder.exists()
+        assert folder.is_dir()
+        assert isinstance(name, str)
+
+        self.filePath: Path = (folder / f'{name}.toml').resolve()
         self.isModified = True
 
     # **************************************************************************
@@ -87,25 +130,12 @@ class AudioProject:
 
     @name.setter
     def name(self, title: str):
-        if isinstance(title, str):
-            title = title.strip()
-            if title and isValidProjectName(title) and self.title != title:
-                self.title = title
-                self.isModified = True
+        assert isinstance(title, str)
 
-    # **************************************************************************
-    @property
-    def folder(self) -> str:
-        """Audio project folder path"""
-        return self.projectFolder
-
-    @folder.setter
-    def folder(self, projectFolder: str):
-        if isinstance(projectFolder, str):
-            projectFolder = projectFolder.strip()
-            if projectFolder == '' or (Path(projectFolder).exists() and Path(projectFolder).is_dir()):
-                self.projectFolder = projectFolder
-                self.isModified = True
+        title = title.strip()
+        if title and isValidProjectName(title) and self.title != title:
+            self.title = title
+            self.isModified = True
 
     # **************************************************************************
     @property
@@ -141,7 +171,7 @@ class AudioProject:
     @property
     def author(self) -> str:
         """Project author identity"""
-        return f'{self.originator} <{self.email}>'
+        return f'{self.originator}' + (f'<{self.email}>' if self.email else '')
 
     # **************************************************************************
     @property
@@ -151,31 +181,32 @@ class AudioProject:
 
     @description.setter
     def description(self, description: str):
-        if isinstance(description, str):
-            description = description.strip()
-            if description != self.narrative:
-                self.narrative = description
-                self.isModified = True
+        assert isinstance(description, str)
+
+        description = description.strip()
+        if description != self.narrative:
+            self.narrative = description
+            self.isModified = True
 
     # **************************************************************************
     @property
-    def isDirty(self) -> bool:
-        """Is project modified since loading"""
-        return self.isModified
+    def isModified(self) -> bool:
+        """Is project data modified since creation"""
+        return self.dirty
 
     # **************************************************************************
-    def projectFilename(self) -> str:
-        """Project filename with complete path"""
-        if self.title:
-            return str((Path(self.projectFolder) / f'{slugify(self.title)}.toml').resolve())
-        else:
-            return ''
+    @isModified.setter
+    def isModified(self, dirty: bool):
+        """Is project data modified since creation"""
+        assert  isinstance(dirty, bool)
+        self.dirty = dirty
+        # broadcast modification status
 
     # **************************************************************************
-    def projectFileExists(self) -> bool:
-        """Check if the project file exists on the filesystem"""
-        prjFilename = self.projectFilename()
-        return bool(prjFilename) and Path(prjFilename).exists()
+    @property
+    def isSaved(self) -> bool:
+        """Is project saved since creation"""
+        return self.lastSavedOn is not None
 
     # **************************************************************************
     def hasRecordings(self) -> bool:
@@ -183,51 +214,59 @@ class AudioProject:
 
     # **************************************************************************
     def loadProject(self) -> None:
-        projectFile: str = self.projectFilename()
-        if not self.projectFileExists():
-            raise AudioProjectException(f'Loading non-existent project file {projectFile}')
+        """Load project data from the TOML file"""
+        # projectFile: str = self.projectFilename()
+        if not self.filePath.exists():
+            raise AudioProjectException(f'Loading non-existent project file {self.filePath!s}')
 
-        os.chdir(self.projectFolder)
+        os.chdir(self.folder)
         try:
-            with open(projectFile, mode='rb') as tomlFile:
+            with open(self.filePath, mode='rb') as tomlFile:
                 tdoc: tomlkit.TOMLDocument = tomlkit.load(tomlFile)
         except tomlkit.exceptions.TOMLKitError as e:
-            raise AudioProjectException(f'{e!s} in {projectFile}')
+            raise AudioProjectException(f'{e!s} in {self.filePath!s}')
         else:
             try:
-                self.renderTomlToProject(tdoc)
+                self.fromTomlDoc(tdoc)
+                self.isModified = False
             except AssertionError as ae:
                 raise AudioProjectException(str(ae))
 
     # **************************************************************************
     def saveProject(self) -> None:
-        """Save project data to the toml file"""
-        projectFilePath: Path = Path(self.projectFilename())
+        """Save project data to the TOML file"""
+        projectFilePath: Path = self.filePath
 
-        if not self.projectFileExists():
-            tdoc = self.renderProjectToToml()
+        if not self.filePath.exists():
+            tdoc = self.toTomlDoc()
         else:
             try:
                 with projectFilePath.open(mode='rb') as tomlFile:
                     tdoc = tomlkit.load(tomlFile)
-                    self.updateProjectToToml(tdoc)
+                    self.updateTomlDoc(tdoc)
             except tomlkit.exceptions.TOMLKitError:
                 # Backup the toml file with error and get a new TOML representation of the project
                 projectFileBackup: Path = projectFilePath.with_name(f'{projectFilePath.name}.bak')
                 projectFileBackup.unlink(missing_ok=True)  # remove any previous backup file of same name
                 projectFilePath.rename(projectFileBackup)
-                tdoc = self.renderProjectToToml()
+                tdoc = self.toTomlDoc()
 
         # update last saved time
-        tdoc['general']['lastSavedOn']: datetime.now(UTC)
+        tdoc['general']['lastSavedOn'] = datetime.now(UTC)
         try:
             with projectFilePath.open(mode='wb+') as tomlFile:
                 tomlFile.write(tomlkit.dumps(tdoc).encode('utf-8'))
+                self.isModified = False
         except tomlkit.exceptions.TOMLKitError as ex:
             raise AudioProjectException(f'{ex!s} in {projectFilePath!s}')
 
     # **************************************************************************
-    def renderTomlToProject(self, tdoc: tomlkit.TOMLDocument):
+    def fromTomlDoc(self, tdoc: tomlkit.TOMLDocument):
+        """Validation helper function to load the project data from TOML document.
+
+        Raises:
+            AssertionError: if the TOML document is not valid.
+        """
         assert 'RekhtaNaveesVersion' in tdoc, '"RekhtaNaveesVersion" key is absent'
         assert tdoc['RekhtaNaveesVersion'] == str(Rx.ApplicationVersion), \
             (f'"RekhtaNaveesVersion" mismatch Application v{str(Rx.ApplicationVersion)} '
@@ -236,6 +275,8 @@ class AudioProject:
         assert 'general' in tdoc, '"general" table is absent'
         general: dict = tdoc['general']  # type: ignore
 
+        assert 'title' in general, '"title" key is absent'
+        self.title = general['title']
         assert 'authorName' in general, '"authorName" key is absent'
         self.originator = general['authorName']
         assert 'authorEmail' in general, '"authorEmail" key is absent'
@@ -247,6 +288,7 @@ class AudioProject:
         if 'lastSavedOn' in general:
             self.lastSavedOn = general['lastSavedOn']
 
+        self.recordings.clear()  # reset any previous recordings
         if 'recordings' in tdoc:
             for i, record in enumerate(tdoc['recordings']):  # type: ignore
                 assert 'audioFile' in record, f'"audioFile" key is absent in recording #{i}'
@@ -259,8 +301,8 @@ class AudioProject:
                 self.recordings.append(recording)
 
     # **************************************************************************
-    def renderProjectToToml(self) -> tomlkit.TOMLDocument:
-        """Update the existing TOML document from the project
+    def toTomlDoc(self) -> tomlkit.TOMLDocument:
+        """Helper function to convert the project data to a TOML document.
 
         Raises:
             AssertionError: if the project data is not valid.
@@ -276,13 +318,17 @@ class AudioProject:
 
         # General Section
         general = tomlkit.table()
+        assert self.title != '', 'Title not provided'
+        general['title'] = self.title
         assert self.originator != '', 'Author not provided'
         general['authorName'] = self.originator
         assert self.email != '', 'Author email not provided'
         general['authorEmail'] = self.email
         if self.narrative:
             general.add('description', tomlkit.string(f'\n{self.narrative}\n', multiline=True))
-        general.add('createdOn', self.createdOn).add('lastSavedOn', self.lastSavedOn)
+        general.add('createdOn', self.createdOn)
+        if self.lastSavedOn:
+            general.add('lastSavedOn', self.lastSavedOn)
         tdoc.add('general', general)
         tdoc.add(tomlkit.nl()).add(tomlkit.comment("*" * 78))
 
@@ -301,11 +347,17 @@ class AudioProject:
         return tdoc
 
     # **************************************************************************
-    def updateProjectToToml(self, tdoc: tomlkit.TOMLDocument):
-        """Update the existing TOML document from the project"""
+    def updateTomlDoc(self, tdoc: tomlkit.TOMLDocument):
+        """Helper function to convert the project data to existing TOML document.
+
+        Raises:
+            AssertionError: if the project data is not valid.
+        """
         tdoc['RekhtaNaveesVersion'] = str(Rx.ApplicationVersion)
 
         general = tdoc['general'] if 'general' in tdoc else toml.table()  # type: ignore
+        assert self.title != '', 'Title not provided'
+        general['title'] = self.title
         assert self.originator != '', 'Author not provided'
         general['authorName'] = self.originator
         assert self.email != '', 'Author email not provided'
@@ -315,7 +367,8 @@ class AudioProject:
         elif 'description' in general:
             general.pop('description')
         general['createdOn'] = self.createdOn
-        general['lastSavedOn'] = self.lastSavedOn
+        if self.lastSavedOn:
+            general.add('lastSavedOn', self.lastSavedOn)
         tdoc['general'] = general
 
         recordings = tdoc['recordings'] if 'recordings' in tdoc else tomlkit.aot()  # type: ignore
