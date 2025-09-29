@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+
 """Example Google style docstrings.
 
 This module demonstrates documentation as specified by the `Google Python
