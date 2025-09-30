@@ -10,22 +10,17 @@
 
 This module uses PyTube to download audio streams for processing.
 """
+import os
+import subprocess
 from enum import auto
+from pathlib import Path
 
 from pytube import Playlist, YouTube, Stream
 from strenum import StrEnum
-import subprocess
-import os
-from pathlib import Path
-from glob import glob
 from tqdm import tqdm
-from pydantic import BaseModel
 
-
-demucs: str = r'd:\tools\stemroller-2.0.6-win-cuda\ThirdPartyApps\demucs-cxfreeze\demucs-cxfreeze.exe'
 whisper: str = r'D:\tools\Faster-Whisper-XXL\faster-whisper-xxl.exe'
 originalsDir: str = r'D:\tools\urdu-youtube\ertugrul-ghazi\downloads'
-vocalsDir: str = r'D:\tools\urdu-youtube\ertugrul-ghazi'
 
 
 ErtugrulGhazi: tuple[str, ...] = (
@@ -35,30 +30,6 @@ ErtugrulGhazi: tuple[str, ...] = (
     'https://www.youtube.com/playlist?list=PLgirwYDDPtS3xais5ixHnE5PXNn2-0c3_',
     'https://www.youtube.com/playlist?list=PLgirwYDDPtS0itM3thU7jV44cbcUCMiV1',
 )
-
-
-class DemucsModels(StrEnum):
-    htdemucs = auto()
-    """first version of Hybrid Transformer Demucs. 
-    Trained on MusDB + 800 songs. Default model."""
-    htdemucs_ft = auto()
-    """fine-tuned version of htdemucs, separation will take 4 times more time 
-    but might be a bit better. Same training set as htdemucs."""
-    htdemucs_6s = auto()
-    """6 sources version of htdemucs, with piano and guitar being added 
-    as sources. Note that the piano source is not working great at the moment."""
-    hdemucs_mmi = auto()
-    """Hybrid Demucs v3, retrained on MusDB + 800 songs."""
-    mdx = auto()
-    """trained only on MusDB HQ, winning model on track A at the MDX challenge."""
-    mdx_extra = auto()
-    """trained with extra training data (including MusDB test set), ranked 2nd 
-    on the track B of the MDX challenge."""
-    mdx_q = auto()
-    """quantized version fo mdx"""
-    mdx_extra_q = auto()
-    """quantized version fo mdx_extra"""
-
 
 class Devices(StrEnum):
     cpu = auto()
@@ -100,37 +71,6 @@ def downloadAudio():
         pp.append(vv)
 
     print(pp, sum([sum(vv) for vv in pp]))
-
-
-# ******************************************************************************
-def separateVocals():
-    # **************************************************************************
-    MP3_BITRATE: int = 192
-    MP3_PRESET: int = 2  # {2,3,4,5,6,7} Encoder preset of MP3, 2 for highest quality, 7 for fastest speed.
-    DEVICE: Devices = Devices.cuda
-    MODEL: DemucsModels = DemucsModels.htdemucs
-    JOBS: int = 1
-    os.chdir(originalsDir)
-    filenames = [fn for fn in walkdir(originalsDir, ext='.mp4')]
-    for fn in tqdm(filenames, unit='files', ncols=80):
-        returnCode = subprocess.call([demucs,
-                                      '--verbose',
-                                      '--out', vocalsDir,
-                                      # '--mp3',
-                                      '--flac',
-                                      # '--mp3-bitrate', MP3_BITRATE,
-                                      # '--two-stems', 'vocals',
-                                      '--filename', '{track}-{stem}.{ext}',
-                                      '--device', str(DEVICE),
-                                      '--name', str(MODEL),
-                                      '--jobs', str(JOBS),
-                                      fn])
-        if returnCode == 0:
-            for audioFile in glob(str(Path(vocalsDir) / str(MODEL) / f'{Path(fn).stem}*')):
-                if Path(audioFile).stem[-7:] != '-vocals':
-                    print(f'Deleting {audioFile}...')
-                    os.unlink(audioFile)
-
 
 # ******************************************************************************
 def transcribeAudios():
