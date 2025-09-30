@@ -173,9 +173,7 @@ class RExistingProjectPage(QWizardPage):
             filter='Project Files (*.toml)')
         if fileName:
             prjFilePath = Path(fileName)
-            audioProject = AudioProject()
-            audioProject.name = str(prjFilePath.stem)
-            audioProject.folder = str(prjFilePath.parent)
+            audioProject = audioProject = AudioProject(path=prjFilePath)
             try:
                 audioProject.loadProject()
                 self.tbxProjectDescription.setPlainText(f'Author: {audioProject.author}\n'
