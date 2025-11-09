@@ -74,13 +74,6 @@ class MainWindow(QMainWindow):
         self.ui = Ui_rekhtaNavees()
         self.ui.setupUi(self)
 
-        for fnt in [":/fonts/fonts/NotoNaskhArabic-Regular.ttf",
-                    ":/fonts/fonts/NotoSans-Regular.ttf",
-                    ":/fonts/fonts/Mehr_Nastaliq_Web_v2.0.ttf",
-                    ":/fonts/fonts/NotoSansMono-Regular.ttf",
-                    ":/fonts/fonts/NotoSansMono-Condensed-Regular.ttf"]:
-            QFontDatabase.addApplicationFont(fnt)
-
         self.ui.transcript.setFont(QFont(['Noto Naskh Arabic', 'Noto Sans'], 24, QFont.Normal))
 
         fm = QFontMetrics(self.ui.transcript.font())
@@ -202,6 +195,7 @@ class MainWindow(QMainWindow):
         This segment will be used to keep track of the currently playing or displayed segment in the application.
         Initialized to 0.
         """
+        self.ui.sbxIndex.valueChanged.connect(self.onIndexChanged)
 
         self.clearRecordingsUi()
         self.setRecordingUiEnabled(False)
@@ -210,61 +204,65 @@ class MainWindow(QMainWindow):
         self.setProjectUiEnabled(False)
 
     # **************************************************************************
+    def clearProjectUi(self):
+        self.ui.leProjectTitle.clear()
+        self.ui.leProjectFolder.clear()
+        self.ui.leCreation.clear()
+        self.ui.leAuthorName.clear()
+        self.ui.leAuthorEmail.clear()
+        self.ui.tbxDescription.clear()
+
+    # **************************************************************************
+    def clearRecordingsUi(self):
+        self.ui.lblRecordingsTitle.setText("")
+        self.ui.lblSegment.setText("")
+        self.ui.lblCurrentPosition.setText("--:--")
+        self.ui.lblTotalLength.setText("--:--")
+
+        self.ui.videoPlayer.setSource(QUrl())
+        self.ui.audioPlayer.setSource(QUrl())
+
+        self.ui.transcript.clear()
+        self.ui.audioSpectrumArea.audioSpectrum.setSource(None, None)
+        self.recordingsModel.setSegments(None)
+        self.audioRecordings = []
+
+    # **************************************************************************
     def setProjectUiEnabled(self, enabled: bool):
+        self.ui.actionSave.setEnabled(enabled)
+        self.ui.actionClose.setEnabled(enabled)
+
+        self.ui.actionDetails.setEnabled(enabled)
+        self.ui.dckProjectDetailsContents.setEnabled(enabled)
         if enabled:
-            self.ui.actionSave.setEnabled(True)
-            self.ui.actionClose.setEnabled(True)
-
-            self.ui.actionDetails.setEnabled(True)
-            self.ui.dckProjectDetailsContents.setEnabled(True)
-
             self.ui.autoSaveTimer.start(RSettings().Main.AutoSaveInterval * 60 * 1000)
-
         else:
-            self.ui.actionSave.setDisabled(True)
-            self.ui.actionClose.setDisabled(True)
-
-            self.ui.actionDetails.setDisabled(True)
-            self.ui.dckProjectDetailsContents.setDisabled(True)
-
             self.ui.autoSaveTimer.stop()
 
     # **************************************************************************
     def setRecordingUiEnabled(self, enabled: bool):
-        if enabled:
-            recording = self.audioRecordings[0]
+        if enabled and len(self.audioRecordings):
+            recording = self.audioRecordings[self.currentRecording]
             self.ui.sbxIndex.setMinimum(1)
             self.ui.sbxIndex.setMaximum(len(recording[1]))
             self.ui.sbxIndex.setSuffix(f"/{len(recording[1])}")
             self.ui.sbxIndex.setEnabled(True)
-
-            self.ui.btnPlay.setEnabled(True)
-            self.ui.cbxLoop.setEnabled(True)
-
-            self.ui.menuRecordings.setEnabled(True)
-            self.ui.recordingToolBar.setVisible(True)
-            self.ui.actionExportSRT.setEnabled(True)
-
-            self.ui.videoView.setEnabled(True)
-            self.ui.tbvListing.setEnabled(True)
-            self.ui.transcript.setEnabled(True)
         else:
             self.ui.sbxIndex.setMinimum(0)
             self.ui.sbxIndex.setMaximum(0)
             self.ui.sbxIndex.setSuffix("")
             self.ui.sbxIndex.setDisabled(True)
-            self.ui.sbxIndex.valueChanged.connect(self.onIndexChanged)
 
-            self.ui.btnPlay.setDisabled(True)
-            self.ui.cbxLoop.setDisabled(True)
+        self.ui.btnPlay.setEnabled(enabled)
+        self.ui.cbxLoop.setEnabled(enabled)
 
-            self.ui.menuRecordings.setDisabled(True)
-            self.ui.recordingToolBar.setHidden(True)
-            self.ui.actionExportSRT.setEnabled(True)
+        self.ui.menuRecordings.setEnabled(enabled)
+        self.ui.recordingToolBar.setVisible(enabled)
+        self.ui.actionExportSRT.setEnabled(enabled)
 
-            self.ui.videoView.setDisabled(True)
-            self.ui.tbvListing.setDisabled(True)
-            self.ui.transcript.setDisabled(True)
+        self.ui.videoView.setEnabled(enabled)
+        self.ui.tbvListing.setEnabled(enabled)
+        self.ui.transcript.setEnabled(enabled)
 
     # **************************************************************************
     def updateDescription(self):
@@ -630,36 +628,12 @@ class MainWindow(QMainWindow):
             # Save the transcript file
             saveTranscript(transcriptFile, transcript)
 
-            # TODO: Add config option to SRT export
+            # TODO: Add config option to automatic/manual SRT export
             # Save the SRT file if automatic export to SRT is selected
             # srtFile = transcriptFile.with_suffix('.srt')
             # writeSrtFile(srtFile, transcript)
 
         self.statusBar().showMessage(f'Saved project {audioProject.name}({audioProject.projectFolder})', 3000)
-
-    # **************************************************************************
-    def clearProjectUi(self):
-        self.ui.leProjectTitle.clear()
-        self.ui.leProjectFolder.clear()
-        self.ui.leCreation.clear()
-        self.ui.leAuthorName.clear()
-        self.ui.leAuthorEmail.clear()
-        self.ui.tbxDescription.clear()
-
-    # **************************************************************************
-    def clearRecordingsUi(self):
-        self.ui.lblRecordingsTitle.setText("")
-        self.ui.lblSegment.setText("")
-        self.ui.lblCurrentPosition.setText("--:--")
-        self.ui.lblTotalLength.setText("--:--")
-
-        self.ui.videoPlayer.setSource(QUrl())
-        self.ui.audioPlayer.setSource(QUrl())
-
-        self.ui.transcript.clear()
-        self.ui.audioSpectrumArea.audioSpectrum.setSource(None, None)
-        self.recordingsModel.setSegments(None)
-        self.audioRecordings = []
 
     # **************************************************************************
     def onAutoSave(self):
@@ -678,12 +652,12 @@ class MainWindow(QMainWindow):
 
         if self.audioProject:
             qApp.logger.info(f"Closing project {self.audioProject.name}({self.audioProject.folder})")
-            self.clearRecordingsUi()
             self.audioRecordings = []
+            self.clearRecordingsUi()
             self.setRecordingUiEnabled(False)
 
-            self.clearProjectUi()
             self.audioProject = None
+            self.clearProjectUi()
             self.setProjectUiEnabled(False)
 
 

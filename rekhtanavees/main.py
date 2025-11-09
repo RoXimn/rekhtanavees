@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QPalette
+from PySide6.QtGui import QColor, QPalette, QFontDatabase
 from PySide6.QtWidgets import QApplication, QStyleFactory
 
 from rekhtanavees.settings import RSettings, Themes
@@ -109,6 +109,15 @@ class RApplication(QApplication):
         # Logging
         logger: logging.Logger = _createLogger(str(Rx.DataPath))
         logger.log(99, f'Initializing {Rx.ApplicationName} {Rx.ApplicationVersion!r}...')
+
+        # ----------------------------------------------------------------------
+        # Register resource fonts
+        for fnt in [":/fonts/fonts/NotoNaskhArabic-Regular.ttf",
+                    ":/fonts/fonts/NotoSans-Regular.ttf",
+                    ":/fonts/fonts/Mehr_Nastaliq_Web_v2.0.ttf",
+                    ":/fonts/fonts/NotoSansMono-Regular.ttf",
+                    ":/fonts/fonts/NotoSansMono-Condensed-Regular.ttf"]:
+            QFontDatabase.addApplicationFont(fnt)
 
         # ----------------------------------------------------------------------
         # Preferences
