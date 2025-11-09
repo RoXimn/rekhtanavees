@@ -11,6 +11,7 @@ import os
 from datetime import datetime, UTC
 from enum import auto
 from pathlib import Path
+from typing import Callable
 
 import tomlkit
 from pydantic import (
@@ -79,25 +80,18 @@ class AudioProject:
                 If provided, it is used as the name of the project file and
                  the path should be the destination folder.
         """
-        assert isinstance(path, Path)
-        assert path.exists()
+        self.setFilePath(path, name)
 
-        if name:
-            assert path.is_dir()
-            self.filePath: Path = (path / f'{name}.toml').resolve()
-        else:
-            assert path.is_file()
-            assert path.suffix == '.toml'
-            self.filePath: Path = path
+        self._title: str = ''
+        self._originator: str = ''
+        self._email: str = ''
+        self._narrative: str = ''
+        self._dirty = False
 
-        self.title: str = ''
-        self.originator: str = ''
-        self.email: str = ''
-        self.narrative: str = ''
         self.createdOn: datetime = datetime.now(UTC)
         self.lastSavedOn: datetime | None = None
         self.recordings: list[Recording] = []
-        self.dirty = False
+        self.notifyObserver: Callable[[bool], None] | None = None
 
     # **************************************************************************
     @property
@@ -108,99 +102,106 @@ class AudioProject:
     # **************************************************************************
     @property
     def filename(self) -> str:
-        """Project filename with file extension but without path"""
+        """Project filename (with extension) but without path"""
         return self.filePath.name if self.filePath else ''
 
     # **************************************************************************
-    def setFilePath(self, folder: Path, name: str) -> None:
+    def setFilePath(self, path: Path, name: str = None) -> None:
         """Set project filename and folder"""
-        assert isinstance(folder, Path)
-        assert folder.exists()
-        assert folder.is_dir()
-        assert isinstance(name, str)
+        assert isinstance(path, Path)
+        assert path.exists()
 
-        self.filePath: Path = (folder / f'{name}.toml').resolve()
-        self.isModified = True
+        if name:
+            assert path.is_dir()
+            assert isValidProjectName(name)
+            self.filePath: Path = (path / f'{name}.toml').resolve()
+        else:
+            assert path.is_file()
+            assert path.suffix == '.toml'
+            self.filePath: Path = path
 
     # **************************************************************************
     @property
-    def name(self) -> str:
+    def title(self) -> str:
         """Audio project title"""
-        return self.title
+        return self._title
 
-    @name.setter
-    def name(self, title: str):
+    @title.setter
+    def title(self, title: str):
         assert isinstance(title, str)
 
         title = title.strip()
-        if title and isValidProjectName(title) and self.title != title:
-            self.title = title
+        if title and isValidProjectName(title) and self._title != title:
+            self._title = title
             self.isModified = True
 
     # **************************************************************************
     @property
     def authorName(self) -> str:
         """Project author name"""
-        return self.originator
+        return self._originator
 
     @authorName.setter
     def authorName(self, author: str):
         assert isinstance(author, str)
 
         author = author.strip()
-        if author and author != self.originator:
-            self.originator = author
+        if author and author != self._originator:
+            self._originator = author
             self.isModified = True
 
     # **************************************************************************
     @property
     def authorEmail(self) -> str:
         """Project author email"""
-        return self.email
+        return self._email
 
     @authorEmail.setter
     def authorEmail(self, authorEmail: str):
         assert isinstance(authorEmail, str)
 
         authorEmail = authorEmail.strip()
-        if authorEmail and authorEmail != self.email:
-            self.email = authorEmail
+        if authorEmail and authorEmail != self._email:
+            self._email = authorEmail
             self.isModified = True
 
     # **************************************************************************
     @property
     def author(self) -> str:
         """Project author identity"""
-        return f'{self.originator}' + (f'<{self.email}>' if self.email else '')
+        return f'{self._originator}' + (f'<{self._email}>' if self._email else '')
 
     # **************************************************************************
     @property
     def description(self) -> str:
         """Project description"""
-        return self.narrative
+        return self._narrative
 
     @description.setter
     def description(self, description: str):
         assert isinstance(description, str)
 
         description = description.strip()
-        if description != self.narrative:
-            self.narrative = description
+        if description != self._narrative:
+            self._narrative = description
             self.isModified = True
 
     # **************************************************************************
     @property
     def isModified(self) -> bool:
         """Is project data modified since creation"""
-        return self.dirty
+        return self._dirty
 
     # **************************************************************************
     @isModified.setter
     def isModified(self, dirty: bool):
         """Is project data modified since creation"""
         assert  isinstance(dirty, bool)
-        self.dirty = dirty
-        # broadcast modification status
+        if self._dirty != dirty:
+            self._dirty = dirty
+            # broadcast modification status
+            if self.notifyObserver:
+                self.notifyObserver(self._dirty)
 
     # **************************************************************************
     @property
@@ -276,13 +277,13 @@ class AudioProject:
         general: dict = tdoc['general']  # type: ignore
 
         assert 'title' in general, '"title" key is absent'
-        self.title = general['title']
+        self._title = general['title']
         assert 'authorName' in general, '"authorName" key is absent'
-        self.originator = general['authorName']
+        self._originator = general['authorName']
         assert 'authorEmail' in general, '"authorEmail" key is absent'
-        self.email = general['authorEmail']
+        self._email = general['authorEmail']
         if 'description' in general:
-            self.narrative = general['description']
+            self._narrative = general['description']
         if 'createdOn' in general:
             self.createdOn = general['createdOn']
         if 'lastSavedOn' in general:
@@ -318,14 +319,14 @@ class AudioProject:
 
         # General Section
         general = tomlkit.table()
-        assert self.title != '', 'Title not provided'
-        general['title'] = self.title
-        assert self.originator != '', 'Author not provided'
-        general['authorName'] = self.originator
-        assert self.email != '', 'Author email not provided'
-        general['authorEmail'] = self.email
-        if self.narrative:
-            general.add('description', tomlkit.string(f'\n{self.narrative}\n', multiline=True))
+        assert self._title != '', 'Title not provided'
+        general['title'] = self._title
+        assert self._originator != '', 'Author not provided'
+        general['authorName'] = self._originator
+        assert self._email != '', 'Author email not provided'
+        general['authorEmail'] = self._email
+        if self._narrative:
+            general.add('description', tomlkit.string(f'\n{self._narrative}\n', multiline=True))
         general.add('createdOn', self.createdOn)
         if self.lastSavedOn:
             general.add('lastSavedOn', self.lastSavedOn)
@@ -356,14 +357,14 @@ class AudioProject:
         tdoc['RekhtaNaveesVersion'] = str(Rx.ApplicationVersion)
 
         general = tdoc['general'] if 'general' in tdoc else toml.table()  # type: ignore
-        assert self.title != '', 'Title not provided'
-        general['title'] = self.title
-        assert self.originator != '', 'Author not provided'
-        general['authorName'] = self.originator
-        assert self.email != '', 'Author email not provided'
-        general['authorEmail'] = self.email
-        if self.narrative:
-            general['description'] = tomlkit.string(f'\n{self.narrative}\n', multiline=True)
+        assert self._title != '', 'Title not provided'
+        general['title'] = self._title
+        assert self._originator != '', 'Author not provided'
+        general['authorName'] = self._originator
+        assert self._email != '', 'Author email not provided'
+        general['authorEmail'] = self._email
+        if self._narrative:
+            general['description'] = tomlkit.string(f'\n{self._narrative}\n', multiline=True)
         elif 'description' in general:
             general.pop('description')
         general['createdOn'] = self.createdOn

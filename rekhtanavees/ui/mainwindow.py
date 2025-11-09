@@ -32,6 +32,7 @@ from rekhtanavees.constants import Rx
 from rekhtanavees.misc.utils import hmsTimestamp, tms
 from rekhtanavees.settings import RSettings
 from rekhtanavees.ui.mainwindow_ui import Ui_rekhtaNavees
+from rekhtanavees.ui.naveesProject import NaveesProject
 from rekhtanavees.ui.projectwizard import RProjectWizard
 from rekhtanavees.ui.recordingsModel import RecordingsTableModel
 
@@ -181,7 +182,8 @@ class MainWindow(QMainWindow):
         self.ui.leAuthorEmail.textChanged.connect(self.updateAuthorEmail)
         self.ui.tbxDescription.textChanged.connect(self.updateDescription)
 
-        self.audioProject: AudioProject | None = None
+        # self.audioProject: AudioProject | None = None
+        self.audioProject: NaveesProject = NaveesProject(self)
         self.audioRecordings: list = []
         self.currentRecording: int = 0
         """Current recording  index.
@@ -366,26 +368,22 @@ class MainWindow(QMainWindow):
         wizard = RProjectWizard(newProject=True)
         result = wizard.exec()
         if result:
-            prjDir = Path(wizard.field('BaseDirectory').strip()) / wizard.field('ProjectName').strip()
+            projectFolder = Path(wizard.field('BaseDirectory').strip()) / wizard.field('ProjectName').strip()
             try:
-                # Create project directory
-                prjDir.mkdir(parents=True, exist_ok=True)
-                qApp.logger.info(f'Project directory "{prjDir}" successfully created')  # type: ignore
+                self.audioProject.new(folder=projectFolder,
+                                      name=wizard.field('ProjectName').strip(),
+                                      author=wizard.field('AuthorName').strip(),
+                                      email=wizard.field('AuthorEmail').strip(),
+                                      description=wizard.field('ProjectDescription'))
+                path = self.audioProject.data.filePath
+                # Close the project model object to save it to disc and set the data to None
+                # so that loadAudioProject gets an empty model
+                self.audioProject.close(save=True)
 
-                # Create new Project object and save to the directory
-                audioProject = AudioProject(path=prjDir, name=wizard.field('ProjectName'))
-                audioProject.authorName = wizard.field('AuthorName')
-                audioProject.authorEmail = wizard.field('AuthorEmail')
-                audioProject.description = wizard.field('ProjectDescription')
-                audioProject.saveProject()
-                qApp.logger.info(f'New project file "{audioProject.projectFilename()}" created')  # type: ignore
-
-                # Load the saved project
-                self.loadAudioProject(audioProject.filePath)
-                self.statusBar().showMessage(f'New project created: {audioProject.name}', 3000)
-
+                self.loadAudioProject(path)
+                self.statusBar().showMessage(f'New project created: {self.audioProject.data.title}', 3000)
             except Exception as e:
-                qApp.logger.error(f'Project Directory: "{prjDir}" could not be created: {e!r}')  # type: ignore
+                qApp.logger.error(f'Project Directory: "{projectFolder}" could not be created: {e!r}')  # type: ignore
 
     # **************************************************************************
     def onOpen(self) -> None:
@@ -445,7 +443,7 @@ class MainWindow(QMainWindow):
         if self.audioProject:
             filePath, _ = QFileDialog.getSaveFileName(
                 self,'Export SRT',
-                str(self.audioProject.folder), 'SRT Files (*.srt)')
+                str(self.audioProject.data.folder), 'SRT Files (*.srt)')
             if filePath:
                 try:
                     writeSrtFile(filePath, self.audioRecordings[self.currentRecording][1])
@@ -551,42 +549,44 @@ class MainWindow(QMainWindow):
         timer = QElapsedTimer()
         timer.start()
 
-        projectFolder: Path = projectFilePath.parent
+        # Load project model
         try:
-            audioProject = AudioProject(path=projectFilePath)
-            audioProject.loadProject()
+            self.audioProject.open(projectFilePath)
         except AudioProjectException as ae:
             qApp.logger.error(str(ae))
             return
 
-        self.audioProject = audioProject
+        t1 = timer.elapsed()
+        timer.restart()
 
-        self.ui.leProjectTitle.setText(self.audioProject.title)
-        self.ui.leProjectFolder.setText(str(self.audioProject.folder))
-        self.ui.leCreation.setText(f"{self.audioProject.createdOn!s}")
-        self.ui.leAuthorName.setText(self.audioProject.authorName)
-        self.ui.leAuthorEmail.setText(self.audioProject.authorEmail)
-        self.ui.tbxDescription.setPlainText(self.audioProject.description)
+        # Update project view
+        projectData = self.audioProject.data
+        projectFolder: Path = projectData.folder
+
+        self.ui.leProjectTitle.setText(projectData.title)
+        self.ui.leProjectFolder.setText(str(projectData.folder))
+        self.ui.leCreation.setText(f"{projectData.createdOn!s}")
+        self.ui.leAuthorName.setText(projectData.authorName)
+        self.ui.leAuthorEmail.setText(projectData.authorEmail)
+        self.ui.tbxDescription.setPlainText(projectData.description)
 
         self.setProjectUiEnabled(True)
 
-        if self.audioProject.hasRecordings():
-            for recording in audioProject.recordings:
+        if projectData.hasRecordings():
+            for recording in projectData.recordings:
                 ac = AudioClip.createAudioClip(projectFolder / recording.audioFile)
                 ts = loadTranscript(projectFolder / recording.transcriptFile)
                 vid = QUrl.fromLocalFile(projectFolder / recording.videoFile) if recording.hasVideo() else QUrl()
                 self.audioRecordings.append((ac, ts, vid))
 
-            t1 = timer.elapsed()
-            timer.restart()
 
-            self.ui.lblRecordingsTitle.setText(f'Audio Recordings: <b>{self.audioProject.title}</b> [{len(self.audioProject.recordings)}]')
+            self.ui.lblRecordingsTitle.setText(f'Audio Recordings: <b>{projectData.title}</b> [{len(projectData.recordings)}]')
             # for recording in self.audioRecordings:
             #     self.ui.lblRecordingsTitle.setText(str(recording[0]))
 
             self.currentRecording = 0
             recording = self.audioRecordings[self.currentRecording]
-            self.ui.audioPlayer.setSource(QUrl.fromLocalFile(projectFolder / audioProject.recordings[self.currentRecording].audioFile))
+            self.ui.audioPlayer.setSource(QUrl.fromLocalFile(projectFolder / projectData.recordings[self.currentRecording].audioFile))
             self.ui.audioSpectrumArea.audioSpectrum.setSource(recording[0], recording[1])
             self.recordingsModel.setSegments(self.audioRecordings[self.currentRecording][1])
             self.ui.tbvListing.resizeColumnsToContents()
@@ -599,30 +599,25 @@ class MainWindow(QMainWindow):
             self.ui.lblTotalLength.setText(hmsTimestamp(len(recording[0]), shorten=True, fixedPrecision=True))
 
             self.setRecordingUiEnabled(True)
-
-            t2 = timer.elapsed()
         else:
-            t1 = timer.elapsed()
-            timer.restart()
-
             self.clearRecordingsUi()
             self.setRecordingUiEnabled(False)
 
-            t2 = timer.elapsed()
+        t2 = timer.elapsed()
 
         self.ui.autoSaveTimer.start(RSettings().Main.AutoSaveInterval * 60 * 1000)
-        self.statusBar().showMessage(f'Loaded project {audioProject.name}({audioProject.folder})', 3000)
-        qApp.logger.debug(f'Project {audioProject.name} loaded in {t1} ms, UI loaded in {t2} ms.')
+        self.statusBar().showMessage(f'Loaded project {projectData.title}({projectData.folder})', 3000)
+        qApp.logger.debug(f'Project {projectData.title} loaded in {t1} ms, UI loaded in {t2} ms.')
 
     # **************************************************************************
     def saveRecordings(self):
         if self.audioProject is None or not self.audioRecordings:
             return
 
-        audioProject = self.audioProject
+        projectData = self.audioProject.data
 
         for i, (audioClip, transcript, video) in enumerate(self.audioRecordings):
-            transcriptFile = Path(audioProject.folder) / audioProject.recordings[i].transcriptFile
+            transcriptFile = Path(projectData.folder) / projectData.recordings[i].transcriptFile
             qApp.logger.info(f'Saving {transcriptFile.resolve()}')
 
             # Save the transcript file
@@ -633,24 +628,34 @@ class MainWindow(QMainWindow):
             # srtFile = transcriptFile.with_suffix('.srt')
             # writeSrtFile(srtFile, transcript)
 
-        self.statusBar().showMessage(f'Saved project {audioProject.name}({audioProject.projectFolder})', 3000)
+        self.statusBar().showMessage(f'Saved project {projectData.title}({projectData.folder})', 3000)
 
     # **************************************************************************
     def onAutoSave(self):
-        qApp.logger.info(f"Autosaving project {self.audioProject.name}({self.audioProject.folder})")
+        qApp.logger.info(f"Autosaving project {self.audioProject.data.title}({self.audioProject.data.folder})")
         self.onSave()
 
     # **************************************************************************
     def onSave(self):
         if self.audioProject:
-            self.audioProject.saveProject()
+            self.audioProject.save()
             self.saveRecordings()
 
     # **************************************************************************
     def onProjectClose(self):
-        # TODO: Check unsaved data before exit
-
         if self.audioProject:
+            if self.audioProject.data.isModified:
+                button = QMessageBox.warning(
+                    self,
+                    "Unsaved project",
+                    "You have unsaved project data. How do you want to continue?",
+                    buttons=QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+                    defaultButton=QMessageBox.Save,
+                )
+                if button == QMessageBox.Cancel:
+                    return
+                self.audioProject.close(save=button == QMessageBox.Save)
+
             qApp.logger.info(f"Closing project {self.audioProject.name}({self.audioProject.folder})")
             self.audioRecordings = []
             self.clearRecordingsUi()

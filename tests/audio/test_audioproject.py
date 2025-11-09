@@ -182,10 +182,10 @@ class TestNaveesProject:
         name = str(uuid.uuid4())
         audioProject = AudioProject(path=tmp_path, name=name)
 
-        assert audioProject.name == ''
+        assert audioProject.title == ''
 
-        audioProject.name = assigned
-        assert audioProject.name == expected
+        audioProject.title = assigned
+        assert audioProject.title == expected
 
     # **************************************************************************
     @pytest.mark.parametrize('prjName, prjFolder', [
@@ -199,7 +199,7 @@ class TestNaveesProject:
         audioProject = AudioProject(path=tmp_path, name=name)
 
         with pytest.raises(AssertionError):
-            audioProject.setFilePath(folder=prjFolder, name=prjName)
+            audioProject.setFilePath(path=prjFolder, name=prjName)
 
     # **************************************************************************
     def test_ProjectLoadValidContent(self, refSavedProject):
@@ -249,7 +249,7 @@ class TestNaveesProject:
     # **************************************************************************
     @pytest.mark.parametrize('attribute, value', [
         ('description', 'another description to shed light on the unilluminated\n'),
-        ('title', 'a new title of the old project\n'),
+        ('title', 'a new title of the old project'),
         ('authorName', 'roximn'),
         ('authorEmail', 'roximn@rixir.org'),
         ('createdOn', datetime.now(UTC)),

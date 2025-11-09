@@ -152,17 +152,19 @@ class TomlLoader(Loader):
             configUpdate['Main'] = mainConfig
         except ValidationError as ve:
             log.warning(f'{ve.error_count()} error(s) found in preferences "Main" section')
+            recentFiles = {i: v for i, v in enumerate(tdoc['Main']["RecentFiles"])}
             for e in ve.errors():
                 field = e['loc'][0]
                 log.warning(f'{field}="{e["input"]}": {e["msg"]}')
                 if field == 'RecentFiles' and e['type'] == 'path_not_file':
                     i: int = e['loc'][1]
                     log.debug(f'Removing file[{i}]:{e["input"]} value of {field}')
-                    del tdoc['Main'][field][i]
+                    recentFiles.pop(i)
                 else:
                     log.debug(f'Resetting {field}="{e["input"]}" to default')
                     tdoc['Main'][field] = MainConfig.model_fields[field].default
 
+            tdoc['Main']["RecentFiles"] = list(recentFiles.values())
             # Re-attempt validating patched config
             mainConfig = MainConfig.model_validate(tdoc['Main'])
             configUpdate['Main'] = mainConfig
