@@ -6,12 +6,22 @@
 #
 # Author:      RoXimn <roximn@rixir.org>
 # ******************************************************************************
+from dataclasses import dataclass
 from pathlib import Path
 
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, Signal, QUrl
 
+from rekhtanavees.audio import AudioClip, loadTranscript, saveTranscript, writeSrtFile, Segment
 from rekhtanavees.audio.audioproject import AudioProject
 
+
+# ******************************************************************************
+@dataclass
+class Recording:
+    audioUrl: QUrl
+    audioData: AudioClip  # Or whatever type audioData is
+    speechSegments: list[Segment] # Adjust the type based on your segments
+    videoUrl: QUrl
 
 # ******************************************************************************
 class NaveesProject(QObject):
@@ -26,6 +36,7 @@ class NaveesProject(QObject):
         super(NaveesProject, self).__init__(parent)
 
         self.data: AudioProject | None = None
+        self.recordings: list[Recording] = []
 
     # --------------------------------------------------------------------------
     def modificationStatusChanged(self):
@@ -80,7 +91,57 @@ class NaveesProject(QObject):
             self.data.saveProject()
 
         self.data = None
+        self.recordings = []
 
     # --------------------------------------------------------------------------
+    def loadRecordings(self):
+        if self.data.hasRecordings():
+            self.recordings = []
+            for recording in self.data.recordings:
+                af = self.data.folder / recording.audioFile
+                rec = Recording(
+                    audioUrl=QUrl.fromLocalFile(af.resolve()),
+                    audioData=AudioClip.createAudioClip(af),
+                    speechSegments=loadTranscript(self.data.folder / recording.transcriptFile),
+                    videoUrl=QUrl.fromLocalFile(self.data.folder / recording.videoFile) if recording.hasVideo() else QUrl()
+                )
+                self.recordings.append(rec)
+
+    # **************************************************************************
+    def saveRecordings(self):
+        if self.length == 0:
+            return
+
+        for i, recording in enumerate(self.recordings):
+            transcriptFile = (Path(self.data.folder) / self.data.recordings[i].transcriptFile).resolve()
+            qApp.logger.debug(f'Saving {transcriptFile!s}')
+
+            # Save the transcript file
+            saveTranscript(transcriptFile, recording.speechSegments)
+
+            # TODO: Add config option to automatic/manual SRT export
+            # Save the SRT file if automatic export to SRT is selected
+            # srtFile = transcriptFile.with_suffix('.srt')
+            # writeSrtFile(srtFile, transcript)
+            qApp.logger.info(f'Saved {transcriptFile!s}')
+
+    # **************************************************************************
+    def saveSrt(self, index: int, filename: str) -> None:
+        if self.length == 0:
+            return
+
+        if index < 0 or index >= self.length:
+            raise ValueError(f'Invalid recording index: {index}')
+
+        if not filename:
+            raise ValueError(f'Invalid filename for saving SRT: {filename}')
+
+        writeSrtFile(filename, self.recordings[index].speechSegments)
+
+    # --------------------------------------------------------------------------
+    @property
+    def length(self):
+        return len(self.recordings)
+
 
 # ******************************************************************************

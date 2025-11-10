@@ -16,8 +16,7 @@ from PySide6.QtCore import (
 )
 from PySide6.QtGui import (
     QAction, QIcon, QKeyEvent, QResizeEvent,
-    QFont, QTextOption, QFontMetrics, QFontDatabase,
-    QSyntaxHighlighter, QTextCharFormat
+    QFont, QTextOption, QFontMetrics, QSyntaxHighlighter, QTextCharFormat
 )
 from PySide6.QtMultimedia import QMediaPlayer, QMediaDevices, QAudioOutput
 from PySide6.QtMultimediaWidgets import QGraphicsVideoItem
@@ -26,8 +25,7 @@ from PySide6.QtWidgets import (
     QGraphicsScene, QGraphicsTextItem, QStyleOption, QStyle, QFileDialog
 )
 
-from rekhtanavees.audio import AudioClip, loadTranscript, saveTranscript, writeSrtFile
-from rekhtanavees.audio.audioproject import AudioProject, AudioProjectException
+from rekhtanavees.audio.audioproject import AudioProjectException
 from rekhtanavees.constants import Rx
 from rekhtanavees.misc.utils import hmsTimestamp, tms
 from rekhtanavees.settings import RSettings
@@ -184,7 +182,6 @@ class MainWindow(QMainWindow):
 
         # self.audioProject: AudioProject | None = None
         self.audioProject: NaveesProject = NaveesProject(self)
-        self.audioRecordings: list = []
         self.currentRecording: int = 0
         """Current recording  index.
 
@@ -227,7 +224,6 @@ class MainWindow(QMainWindow):
         self.ui.transcript.clear()
         self.ui.audioSpectrumArea.audioSpectrum.setSource(None, None)
         self.recordingsModel.setSegments(None)
-        self.audioRecordings = []
 
     # **************************************************************************
     def setProjectUiEnabled(self, enabled: bool):
@@ -243,11 +239,11 @@ class MainWindow(QMainWindow):
 
     # **************************************************************************
     def setRecordingUiEnabled(self, enabled: bool):
-        if enabled and len(self.audioRecordings):
-            recording = self.audioRecordings[self.currentRecording]
+        if enabled and self.audioProject.length:
+            recording = self.audioProject.recordings[self.currentRecording]
             self.ui.sbxIndex.setMinimum(1)
-            self.ui.sbxIndex.setMaximum(len(recording[1]))
-            self.ui.sbxIndex.setSuffix(f"/{len(recording[1])}")
+            self.ui.sbxIndex.setMaximum(len(recording.speechSegments))
+            self.ui.sbxIndex.setSuffix(f"/{len(recording.speechSegments)}")
             self.ui.sbxIndex.setEnabled(True)
         else:
             self.ui.sbxIndex.setMinimum(0)
@@ -285,9 +281,11 @@ class MainWindow(QMainWindow):
     # **************************************************************************
     def updateTranscriptSegment(self):
         text = self.ui.transcript.toPlainText()
-        if self.audioRecordings:
-            self.audioRecordings[self.currentRecording][1][self.currentSegment].text = text
-            self.ui.sceneCaption.setPlainText(text)
+        self.ui.sceneCaption.setPlainText(text)
+        if self.audioProject and self.audioProject.length > 0:
+            recording = self.audioProject.recordings[self.currentRecording]
+            segment = recording.speechSegments[self.currentSegment]
+            segment.text = text
 
     # **************************************************************************
     def keyPressEvent(self, e: QKeyEvent):
@@ -310,14 +308,14 @@ class MainWindow(QMainWindow):
 
     # **************************************************************************
     def onIndexChanged(self, idx: int):
-        if len(self.audioRecordings) == 0:
+        if not self.audioProject or self.audioProject.length <= 0:
             return
 
         self.updateCurrentSegment(idx - 1)
 
     # **************************************************************************
     def onTogglePlay(self):
-        if len(self.audioRecordings) == 0:
+        if not self.audioProject or self.audioProject.length <= 0:
             return
 
         if self.ui.audioPlayer.playbackState() == QMediaPlayer.PlayingState:
@@ -331,19 +329,19 @@ class MainWindow(QMainWindow):
 
     # **************************************************************************
     def displayCurrentSegment(self):
-        if len(self.audioRecordings) == 0:
+        if not self.audioProject or self.audioProject.length <= 0:
             return
 
-        segments = self.audioRecordings[self.currentRecording][1]
-        if segments:
-            s = segments[self.currentSegment]
+        recording = self.audioProject.recordings[self.currentRecording]
+        if recording.speechSegments:
+            segment = recording.speechSegments[self.currentSegment]
 
-            self.ui.transcript.setPlainText(s.text)
+            self.ui.transcript.setPlainText(segment.text)
             self.ui.lblSegment.setText(
-                f'[E: {hmsTimestamp(tms(s.end), shorten=True)}({s.end:,.3f}) - '
-                f'S: {hmsTimestamp(tms(s.start), shorten=True)}({s.start:,.3f}), '
-                f'\u0394{tms(s.end)-tms(s.start):,}ms] '
-                f'{self.currentSegment+1:03}/{len(segments)}')
+                f'[E: {hmsTimestamp(tms(segment.end), shorten=True)}({segment.end:,.3f}) - '
+                f'S: {hmsTimestamp(tms(segment.start), shorten=True)}({segment.start:,.3f}), '
+                f'\u0394{tms(segment.end)-tms(segment.start):,}ms] '
+                f'{self.currentSegment+1:03}/{len(recording.speechSegments)}')
 
             self.ui.audioSpectrumArea.audioSpectrum.currentSegment = self.currentSegment
             self.ui.audioSpectrumArea.showSegment(self.currentSegment)
@@ -368,7 +366,8 @@ class MainWindow(QMainWindow):
         wizard = RProjectWizard(newProject=True)
         result = wizard.exec()
         if result:
-            projectFolder = Path(wizard.field('BaseDirectory').strip()) / wizard.field('ProjectName').strip()
+            projectFolder = (Path(wizard.field('BaseDirectory').strip()) /
+                             wizard.field('ProjectName').strip())
             try:
                 self.audioProject.new(folder=projectFolder,
                                       name=wizard.field('ProjectName').strip(),
@@ -381,9 +380,12 @@ class MainWindow(QMainWindow):
                 self.audioProject.close(save=True)
 
                 self.loadAudioProject(path)
-                self.statusBar().showMessage(f'New project created: {self.audioProject.data.title}', 3000)
+                self.statusBar().showMessage(
+                    text=f'New project created: {self.audioProject.data.title}',
+                    timeout=3000)
             except Exception as e:
-                qApp.logger.error(f'Project Directory: "{projectFolder}" could not be created: {e!r}')  # type: ignore
+                qApp.logger.error(f'Project Directory: "{projectFolder} '
+                                  f'could not be created: {e!r}')
 
     # **************************************************************************
     def onOpen(self) -> None:
@@ -395,12 +397,13 @@ class MainWindow(QMainWindow):
 
     # **************************************************************************
     def playSegment(self):
-        if len(self.audioRecordings) == 0:
+        if not self.audioProject or self.audioProject.length <= 0:
             return
 
-        s = self.audioRecordings[self.currentRecording][1][self.currentSegment]
-        self.ui.audioPlayer.setPosition(tms(s.start))
-        self.ui.videoPlayer.setPosition(tms(s.start))
+        recording = self.audioProject.recordings[self.currentRecording]
+        segment = recording.speechSegments[self.currentSegment]
+        self.ui.audioPlayer.setPosition(tms(segment.start))
+        self.ui.videoPlayer.setPosition(tms(segment.start))
         self.ui.audioPlayer.play()
         self.ui.videoPlayer.play()
 
@@ -422,11 +425,12 @@ class MainWindow(QMainWindow):
         self.ui.playSlider.setValue(pos)
         self.ui.lblCurrentPosition.setText(hmsTimestamp(pos, shorten=True))
 
-        if len(self.audioRecordings) == 0:
+        if not self.audioProject or self.audioProject.length <= 0:
             self.pauseSegment()
             return
 
-        segment = self.audioRecordings[self.currentRecording][1][self.currentSegment]
+        recording = self.audioProject.recordings[self.currentRecording]
+        segment = recording.speechSegments[self.currentSegment]
         if pos > tms(segment.end):
             self.pauseSegment()
             if self.ui.cbxLoop.isChecked():
@@ -446,12 +450,13 @@ class MainWindow(QMainWindow):
                 str(self.audioProject.data.folder), 'SRT Files (*.srt)')
             if filePath:
                 try:
-                    writeSrtFile(filePath, self.audioRecordings[self.currentRecording][1])
+                    self.audioProject.saveSrt(self.currentRecording, filePath)
                 except Exception as e:
                     qApp.logger.error(f"Failed to export SRT: {e!s}")
                 else:
                     qApp.logger.info(f"Exported SRT to {filePath}")
-                    self.statusBar().showMessage(f"Exported SRT to {filePath}", 5000)
+                    self.statusBar().showMessage(text=f"Exported SRT to {filePath}",
+                                                 timeout=5000)
 
     # **************************************************************************
     def onExit(self) -> None:
@@ -480,7 +485,8 @@ class MainWindow(QMainWindow):
         qApp.logger.debug(f"Adjusting recent list for {projectFilename}")
         settings = RSettings()
         recentFiles: List[Path] = settings.Main.RecentFiles
-        qApp.logger.debug(f"Total recents[{len(recentFiles)}] {', '.join(f'{rf!s}' for rf in recentFiles)}")
+        qApp.logger.debug(f"Total recents[{len(recentFiles)}] "
+                          f"{', '.join(f'{rf!s}' for rf in recentFiles)}")
 
         while projectFilename in recentFiles:
             recentFiles.remove(projectFilename)
@@ -489,7 +495,8 @@ class MainWindow(QMainWindow):
             del recentFiles[self.ui.maxRecentCount:]
         settings.Main.RecentFiles = recentFiles
         settings.save()
-        qApp.logger.debug(f"Updated recents[{len(recentFiles)}] {', '.join(f'{rf!s}' for rf in recentFiles)}")
+        qApp.logger.debug(f"Updated recents[{len(recentFiles)}] "
+                          f"{', '.join(f'{rf!s}' for rf in recentFiles)}")
 
         self.updateRecentFileList()
 
@@ -498,7 +505,8 @@ class MainWindow(QMainWindow):
         settings = RSettings()
         recentFiles: List[Path] = settings.Main.RecentFiles
         total: int = min(len(recentFiles), settings.Main.RecentMaxCount)
-        qApp.logger.debug(f"Total recents[{total}] {', '.join(f'{rf!s}' for rf in recentFiles)}")
+        qApp.logger.debug(f"Total recents[{total}] "
+                          f"{', '.join(f'{rf!s}' for rf in recentFiles)}")
 
         for i in range(total):
             recentFile = recentFiles[i]
@@ -531,8 +539,9 @@ class MainWindow(QMainWindow):
 
     # **************************************************************************
     def updateCurrentSegment(self, idx: int):
-        segments = self.audioRecordings[self.currentRecording][1]
-        idx = max(min(len(segments) - 1, idx), 0)
+        recording = self.audioProject.recordings[self.currentRecording]
+        segmentCount = len(recording.speechSegments)
+        idx = max(min(segmentCount - 1, idx), 0)
         if idx != self.currentSegment:
             self.currentSegment = idx
             self.displayCurrentSegment()
@@ -573,30 +582,28 @@ class MainWindow(QMainWindow):
         self.setProjectUiEnabled(True)
 
         if projectData.hasRecordings():
-            for recording in projectData.recordings:
-                ac = AudioClip.createAudioClip(projectFolder / recording.audioFile)
-                ts = loadTranscript(projectFolder / recording.transcriptFile)
-                vid = QUrl.fromLocalFile(projectFolder / recording.videoFile) if recording.hasVideo() else QUrl()
-                self.audioRecordings.append((ac, ts, vid))
+            # Load all the recordings data
+            self.audioProject.loadRecordings()
 
-
-            self.ui.lblRecordingsTitle.setText(f'Audio Recordings: <b>{projectData.title}</b> [{len(projectData.recordings)}]')
+            self.ui.lblRecordingsTitle.setText(f'Audio Recordings: <b>'
+                                               f'{projectData.title}</b> '
+                                               f'[{len(projectData.recordings)}]')
             # for recording in self.audioRecordings:
             #     self.ui.lblRecordingsTitle.setText(str(recording[0]))
 
             self.currentRecording = 0
-            recording = self.audioRecordings[self.currentRecording]
-            self.ui.audioPlayer.setSource(QUrl.fromLocalFile(projectFolder / projectData.recordings[self.currentRecording].audioFile))
-            self.ui.audioSpectrumArea.audioSpectrum.setSource(recording[0], recording[1])
-            self.recordingsModel.setSegments(self.audioRecordings[self.currentRecording][1])
+            recording = self.audioProject.recordings[self.currentRecording]
+            self.ui.audioPlayer.setSource(recording.audioUrl)
+            self.ui.audioSpectrumArea.audioSpectrum.setSource(recording.audioData, recording.speechSegments)
+            self.recordingsModel.setSegments(recording.speechSegments)
             self.ui.tbvListing.resizeColumnsToContents()
 
             self.currentSegment = 0
             self.displayCurrentSegment()
 
-            self.ui.videoPlayer.setSource(self.audioRecordings[self.currentRecording][2])
+            self.ui.videoPlayer.setSource(recording.videoUrl)
             self.ui.lblCurrentPosition.setText(hmsTimestamp(0, shorten=True, fixedPrecision=True))
-            self.ui.lblTotalLength.setText(hmsTimestamp(len(recording[0]), shorten=True, fixedPrecision=True))
+            self.ui.lblTotalLength.setText(hmsTimestamp(len(recording.speechSegments), shorten=True, fixedPrecision=True))
 
             self.setRecordingUiEnabled(True)
         else:
@@ -610,27 +617,6 @@ class MainWindow(QMainWindow):
         qApp.logger.debug(f'Project {projectData.title} loaded in {t1} ms, UI loaded in {t2} ms.')
 
     # **************************************************************************
-    def saveRecordings(self):
-        if self.audioProject is None or not self.audioRecordings:
-            return
-
-        projectData = self.audioProject.data
-
-        for i, (audioClip, transcript, video) in enumerate(self.audioRecordings):
-            transcriptFile = Path(projectData.folder) / projectData.recordings[i].transcriptFile
-            qApp.logger.info(f'Saving {transcriptFile.resolve()}')
-
-            # Save the transcript file
-            saveTranscript(transcriptFile, transcript)
-
-            # TODO: Add config option to automatic/manual SRT export
-            # Save the SRT file if automatic export to SRT is selected
-            # srtFile = transcriptFile.with_suffix('.srt')
-            # writeSrtFile(srtFile, transcript)
-
-        self.statusBar().showMessage(f'Saved project {projectData.title}({projectData.folder})', 3000)
-
-    # **************************************************************************
     def onAutoSave(self):
         qApp.logger.info(f"Autosaving project {self.audioProject.data.title}({self.audioProject.data.folder})")
         self.onSave()
@@ -639,7 +625,8 @@ class MainWindow(QMainWindow):
     def onSave(self):
         if self.audioProject:
             self.audioProject.save()
-            self.saveRecordings()
+            projectData = self.audioProject.data
+            self.statusBar().showMessage(f'Saved project {projectData.title}({projectData.folder})', 3000)
 
     # **************************************************************************
     def onProjectClose(self):
@@ -654,10 +641,11 @@ class MainWindow(QMainWindow):
                 )
                 if button == QMessageBox.Cancel:
                     return
-                self.audioProject.close(save=button == QMessageBox.Save)
+                self.audioProject.close(save=(button == QMessageBox.Save))
 
-            qApp.logger.info(f"Closing project {self.audioProject.name}({self.audioProject.folder})")
-            self.audioRecordings = []
+            projectData = self.audioProject.data
+            qApp.logger.info(f"Closing project {projectData.title}({projectData.folder})")
+
             self.clearRecordingsUi()
             self.setRecordingUiEnabled(False)
 
